@@ -6,7 +6,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.knowledge.api.common.ErrorCode;
 import com.knowledge.common.exception.BusinessException;
-import com.knowledge.marketing.groupbuy.bo.GroupOrderBO;
+import com.knowledge.marketing.groupbuy.bo.TradeOrderBO;
 import com.knowledge.marketing.groupbuy.bo.JoinGroupBO;
 import com.knowledge.marketing.groupbuy.dto.PaymentDTO;
 import com.knowledge.marketing.groupbuy.service.GroupPurchaseService;
@@ -22,6 +22,7 @@ import java.time.ZoneOffset;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutionException;
@@ -145,7 +146,7 @@ class MarketingAcceptanceIT {
     void oneHundredConcurrentRequestsCompeteForTenSlotsWithoutOverselling() throws Exception {
         CountDownLatch ready = new CountDownLatch(100);
         CountDownLatch start = new CountDownLatch(1);
-        List<Future<GroupOrderBO>> futures = new ArrayList<>();
+        List<Future<TradeOrderBO>> futures = new ArrayList<>();
         for (int i = 0; i < 100; i++) {
             int index = i;
             futures.add(executor.submit(() -> {
@@ -158,7 +159,7 @@ class MarketingAcceptanceIT {
         ready.await();
         start.countDown();
 
-        List<GroupOrderBO> accepted = successfulResults(futures);
+        List<TradeOrderBO> accepted = successfulResults(futures);
         assertThat(accepted).hasSize(10);
         for (int i = 0; i < accepted.size(); i++) {
             String orderId = accepted.get(i).orderId();
@@ -181,8 +182,8 @@ class MarketingAcceptanceIT {
     void duplicateRequestIsIdempotentAndDatabaseFailureReleasesRedisSlot() {
         JoinGroupBO request = new JoinGroupBO(
                 "group-acceptance", "same-user");
-        GroupOrderBO first = purchaseService.join(request);
-        GroupOrderBO second = purchaseService.join(request);
+        TradeOrderBO first = purchaseService.join(request);
+        TradeOrderBO second = purchaseService.join(request);
 
         assertThat(second.orderId()).isEqualTo(first.orderId());
         assertThat(count("SELECT COUNT(*) FROM trade_order WHERE group_id = 'group-acceptance' AND user_id = 'same-user'"))
@@ -238,6 +239,110 @@ class MarketingAcceptanceIT {
         assertThat(join.path("responses").has("200")).isTrue();
         assertThat(join.path("parameters").toString()).contains("X-Request-Id");
         assertThat(document.path("paths").has("/api/marketing/orders/{orderId}/pay")).isTrue();
+        assertThat(document.path("paths").has("/api/marketing/activities")).isTrue();
+        assertThat(document.path("paths").has("/api/marketing/activities/{activityId}/groups")).isTrue();
+        assertThat(document.path("paths").has("/api/marketing/orders")).isTrue();
+        assertThat(document.path("paths").has("/api/marketing/admin/activities")).isTrue();
+        assertThat(document.path("paths").has("/api/marketing/admin/notification-tasks/{taskId}/retry"))
+                .isTrue();
+    }
+
+    @Test
+    void userCanBrowseGroupBuyingAndOnlyReadOwnedOrder() {
+        TradeOrderBO order = purchaseService.join(new JoinGroupBO("group-acceptance", "order-owner"));
+
+        ResponseEntity<JsonNode> activities = restTemplate.exchange(
+                "/api/marketing/activities", HttpMethod.GET,
+                new HttpEntity<>(bearerHeaders("order-owner", "LEARNER")), JsonNode.class);
+        ResponseEntity<JsonNode> groups = restTemplate.exchange(
+                "/api/marketing/activities/activity-acceptance/groups", HttpMethod.GET,
+                new HttpEntity<>(bearerHeaders("order-owner", "LEARNER")), JsonNode.class);
+        ResponseEntity<JsonNode> owned = restTemplate.exchange(
+                "/api/marketing/orders/" + order.orderId(), HttpMethod.GET,
+                new HttpEntity<>(bearerHeaders("order-owner", "LEARNER")), JsonNode.class);
+        ResponseEntity<JsonNode> foreign = restTemplate.exchange(
+                "/api/marketing/orders/" + order.orderId(), HttpMethod.GET,
+                new HttpEntity<>(bearerHeaders("other-user", "LEARNER")), JsonNode.class);
+
+        assertThat(activities.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(activities.getBody().path("data").path("total").asLong()).isEqualTo(1);
+        assertThat(groups.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(groups.getBody().path("data").path("items").get(0).path("id").asText())
+                .isEqualTo("group-acceptance");
+        assertThat(owned.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(owned.getBody().path("data").path("orderId").asText()).isEqualTo(order.orderId());
+        assertThat(foreign.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
+    }
+
+    @Test
+    void adminCanManageActivityAndCreateGroupIdempotently() {
+        Instant startTime = Instant.now().minusSeconds(60);
+        Instant endTime = Instant.now().plusSeconds(3600);
+        HttpHeaders headers = bearerHeaders("admin-user", "ADMIN");
+        Map<String, Object> createActivity = Map.of(
+                "activityId", "activity-admin",
+                "courseId", "course-admin",
+                "startTime", startTime.toString(),
+                "endTime", endTime.toString(),
+                "targetCount", 3,
+                "maxJoinPerUser", 1,
+                "priceCents", 6900);
+
+        ResponseEntity<JsonNode> created = post("/api/marketing/admin/activities", createActivity, headers);
+        assertThat(created.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(created.getBody().path("data").path("status").asText()).isEqualTo("DRAFT");
+
+        Map<String, Object> updateActivity = Map.of(
+                "courseId", "course-admin-updated",
+                "startTime", startTime.toString(),
+                "endTime", endTime.toString(),
+                "targetCount", 4,
+                "maxJoinPerUser", 1,
+                "priceCents", 5900,
+                "version", 0);
+        ResponseEntity<JsonNode> updated = put(
+                "/api/marketing/admin/activities/activity-admin", updateActivity, headers);
+        assertThat(updated.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(updated.getBody().path("data").path("version").asInt()).isEqualTo(1);
+
+        ResponseEntity<JsonNode> activated = patch(
+                "/api/marketing/admin/activities/activity-admin/status",
+                Map.of("status", "ACTIVE", "version", 1), headers);
+        assertThat(activated.getStatusCode()).isEqualTo(HttpStatus.OK);
+
+        Map<String, Object> createGroup = Map.of(
+                "groupId", "group-admin",
+                "ownerUserId", "group-owner",
+                "expiresAt", Instant.now().plusSeconds(1800).toString());
+        ResponseEntity<JsonNode> first = post(
+                "/api/marketing/admin/activities/activity-admin/groups", createGroup, headers);
+        ResponseEntity<JsonNode> replay = post(
+                "/api/marketing/admin/activities/activity-admin/groups", createGroup, headers);
+
+        assertThat(first.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(replay.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(replay.getBody().path("data").path("id").asText()).isEqualTo("group-admin");
+        assertThat(count("SELECT COUNT(*) FROM group_order WHERE id = 'group-admin'")).isEqualTo(1);
+    }
+
+    @Test
+    void learnerCannotUseAdminApiAndAdminCanScheduleFailedNotificationForRetry() {
+        ResponseEntity<JsonNode> forbidden = restTemplate.exchange(
+                "/api/marketing/admin/activities", HttpMethod.GET,
+                new HttpEntity<>(bearerHeaders("learner-user", "LEARNER")), JsonNode.class);
+        assertThat(forbidden.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
+
+        NotificationTaskDO task = notificationTask();
+        task.setStatus(NotificationStatus.RETRY);
+        task.setLastError("broker: 消息代理不可用");
+        taskMapper.insert(task);
+        ResponseEntity<JsonNode> retried = post(
+                "/api/marketing/admin/notification-tasks/" + task.getId() + "/retry",
+                null, bearerHeaders("admin-user", "ADMIN"));
+
+        assertThat(retried.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(retried.getBody().path("data").path("status").asText()).isEqualTo("PENDING");
+        assertThat(taskMapper.selectById(task.getId()).getLastError()).isNull();
     }
 
     @Test
@@ -291,7 +396,7 @@ class MarketingAcceptanceIT {
 
     @Test
     void anotherUserCannotPayOwnedOrder() {
-        GroupOrderBO order = purchaseService.join(new JoinGroupBO(
+        TradeOrderBO order = purchaseService.join(new JoinGroupBO(
                 "group-acceptance", "owner-user"));
 
         assertThatThrownBy(() -> settlementService.settle(order.orderId(), "foreign-payment", "other-user"))
@@ -299,7 +404,30 @@ class MarketingAcceptanceIT {
                         exception -> assertThat(exception.getErrorCode()).isEqualTo(ErrorCode.FORBIDDEN));
     }
 
+    private HttpHeaders bearerHeaders(String userId, String... roles) {
+        HttpHeaders headers = new HttpHeaders();
+        headers.setBearerAuth(accessToken(userId, roles));
+        headers.setContentType(MediaType.APPLICATION_JSON);
+        return headers;
+    }
+
+    private ResponseEntity<JsonNode> post(String path, Object body, HttpHeaders headers) {
+        return restTemplate.exchange(path, HttpMethod.POST, new HttpEntity<>(body, headers), JsonNode.class);
+    }
+
+    private ResponseEntity<JsonNode> put(String path, Object body, HttpHeaders headers) {
+        return restTemplate.exchange(path, HttpMethod.PUT, new HttpEntity<>(body, headers), JsonNode.class);
+    }
+
+    private ResponseEntity<JsonNode> patch(String path, Object body, HttpHeaders headers) {
+        return restTemplate.exchange(path, HttpMethod.PATCH, new HttpEntity<>(body, headers), JsonNode.class);
+    }
+
     private String accessToken(String userId) {
+        return accessToken(userId, "LEARNER");
+    }
+
+    private String accessToken(String userId, String... roles) {
         Instant now = Instant.now();
         JwtClaimsSet claims = JwtClaimsSet.builder()
                 .issuer("knowledge-iam")
@@ -307,7 +435,7 @@ class MarketingAcceptanceIT {
                 .issuedAt(now)
                 .expiresAt(now.plusSeconds(300))
                 .claim("username", "acceptance-user")
-                .claim("roles", List.of("LEARNER"))
+                .claim("roles", List.of(roles))
                 .build();
         SecretKeySpec key = new SecretKeySpec(JWT_SECRET.getBytes(StandardCharsets.UTF_8), "HmacSHA256");
         NimbusJwtEncoder encoder = new NimbusJwtEncoder(new ImmutableSecret<>(key));
@@ -315,9 +443,9 @@ class MarketingAcceptanceIT {
                 JwsHeader.with(MacAlgorithm.HS256).build(), claims)).getTokenValue();
     }
 
-    private List<GroupOrderBO> successfulResults(List<Future<GroupOrderBO>> futures) throws Exception {
-        List<GroupOrderBO> result = new ArrayList<>();
-        for (Future<GroupOrderBO> future : futures) {
+    private List<TradeOrderBO> successfulResults(List<Future<TradeOrderBO>> futures) throws Exception {
+        List<TradeOrderBO> result = new ArrayList<>();
+        for (Future<TradeOrderBO> future : futures) {
             try {
                 result.add(future.get());
             } catch (ExecutionException expectedRejection) {

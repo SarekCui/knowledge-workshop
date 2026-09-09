@@ -3,7 +3,8 @@ package com.knowledge.marketing.groupbuy.service;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.knowledge.common.exception.BusinessException;
 import com.knowledge.marketing.groupbuy.bo.JoinGroupBO;
-import com.knowledge.marketing.groupbuy.bo.GroupOrderBO;
+import com.knowledge.marketing.groupbuy.bo.TradeOrderBO;
+import com.knowledge.marketing.groupbuy.converter.GroupBuyConverter;
 import com.knowledge.marketing.groupbuy.dao.model.GroupActivityDO;
 import com.knowledge.marketing.groupbuy.dao.model.GroupOrderDO;
 import com.knowledge.marketing.groupbuy.dao.model.GroupParticipantDO;
@@ -45,7 +46,7 @@ public class GroupPurchaseService {
         this.transactionService = transactionService;
     }
 
-    public GroupOrderBO join(JoinGroupBO request) {
+    public TradeOrderBO join(JoinGroupBO request) {
         TradeOrderDO existing = findByGroupAndUser(request.groupId(), request.userId());
         if (existing != null) {
             return toBusinessObject(existing);
@@ -94,7 +95,7 @@ public class GroupPurchaseService {
                 .eq(TradeOrderDO::getUserId, userId));
     }
 
-    private GroupOrderBO toBusinessObject(TradeOrderDO order) {
-        return new GroupOrderBO(order.getId(), order.getGroupId(), order.getStatus(), order.getAmountCents());
+    private TradeOrderBO toBusinessObject(TradeOrderDO order) {
+        return GroupBuyConverter.toBO(order);
     }
 }

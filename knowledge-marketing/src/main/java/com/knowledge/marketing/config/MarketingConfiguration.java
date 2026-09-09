@@ -1,5 +1,8 @@
 package com.knowledge.marketing.config;
 
+import com.baomidou.mybatisplus.annotation.DbType;
+import com.baomidou.mybatisplus.extension.plugins.MybatisPlusInterceptor;
+import com.baomidou.mybatisplus.extension.plugins.inner.PaginationInnerInterceptor;
 import java.time.Clock;
 import org.redisson.Redisson;
 import org.redisson.api.RedissonClient;
@@ -11,6 +14,15 @@ import org.springframework.context.annotation.Configuration;
 
 @Configuration
 public class MarketingConfiguration {
+
+    @Bean
+    MybatisPlusInterceptor mybatisPlusInterceptor() {
+        MybatisPlusInterceptor interceptor = new MybatisPlusInterceptor();
+        PaginationInnerInterceptor pagination = new PaginationInnerInterceptor(DbType.MYSQL);
+        pagination.setMaxLimit(100L);
+        interceptor.addInnerInterceptor(pagination);
+        return interceptor;
+    }
 
     @Bean
     Clock clock() {

@@ -22,4 +22,11 @@ public interface NotificationTaskMapper extends BaseMapper<NotificationTaskDO> {
              WHERE id = #{id} AND status IN ('PENDING', 'RETRY')
             """)
     int claim(@Param("id") String id, @Param("now") LocalDateTime now);
+
+    @Update("""
+            UPDATE notification_task
+               SET status = 'PENDING', next_retry_at = #{now}, last_error = NULL, updated_at = #{now}
+             WHERE id = #{id} AND status IN ('RETRY', 'DEAD')
+            """)
+    int resetForManualRetry(@Param("id") String id, @Param("now") LocalDateTime now);
 }

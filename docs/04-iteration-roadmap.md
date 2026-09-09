@@ -123,8 +123,9 @@
 ## 第 5 轮：完整课程、社区与后台（进行中）
 
 当前进度：5.1 的三批学习主线已完成——课程/章节/Note、视频进度、拼团成团后权益发放。
+5.2 已补齐拼团活动、可用团、本人订单查询，以及活动状态管理、建团、通知任务查询与人工重试。
 数据库表名去前缀、Redis Key 集中治理和拼团自然幂等键重构已完成。
-社区、课程以外的运营后台与课程级进度投影仍属于后续范围。
+社区、积分赛季运营后台与课程级进度投影仍属于后续范围。
 
 ### 目标
 
@@ -173,5 +174,5 @@
 | 3.5 OpenAPI 契约 | 已完成 | 第 2、3 轮完成 | Springdoc、Swagger UI；Testcontainers 验证营销与积分契约端点，见 `docs/acceptance/round-3.5-openapi.md` |
 | 3.6 HTTP 接口基础设施 | 已完成 | OpenAPI 契约完成 | 统一 `Result<T>`、HTTP 状态映射、请求 ID、按领域分包与 DO/DTO/BO/VO 规范，见 `docs/acceptance/round-3.6-http-and-layering.md` |
 | 4 服务治理 | 暂告一段落 | 核心链路稳定 | 已接入 Nacos、网关路由、IAM、双层 JWT 验签、资源授权、刷新令牌轮换与注销、网关容错及结构化日志；指标、追踪与容错监控保留到真实学习链路形成后实施，见 ADR-0007—0009 及第 4.2—4.6 轮验收记录 |
-| 5 课程社区后台 | 进行中 | 简历三个亮点验收 | 5.1 三批学习主线通过 6 个 Testcontainers 场景，见 `docs/acceptance/round-5.1-learning-core.md`；社区与扩展运营后台待实现 |
+| 5 课程社区后台 | 进行中 | 简历三个亮点验收 | 5.1 三批学习主线通过 6 个 Testcontainers 场景；5.2 补齐营销查询与运营接口，见 `docs/acceptance/round-5.1-learning-core.md`、`docs/acceptance/round-5.2-marketing-operations.md`；社区与积分赛季运营后台待实现 |
 | 6 作品化交付 | 未开始 | 功能范围冻结 | 演示、压测、报告 |

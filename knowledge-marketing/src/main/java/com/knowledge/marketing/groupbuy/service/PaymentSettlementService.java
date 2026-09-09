@@ -5,7 +5,8 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.knowledge.api.marketing.dto.GroupFormedEventDTO;
 import com.knowledge.common.exception.BusinessException;
 import com.knowledge.common.web.RequestIdSupport;
-import com.knowledge.marketing.groupbuy.bo.GroupOrderBO;
+import com.knowledge.marketing.groupbuy.bo.TradeOrderBO;
+import com.knowledge.marketing.groupbuy.converter.GroupBuyConverter;
 import com.knowledge.marketing.groupbuy.dao.model.GroupOrderDO;
 import com.knowledge.marketing.groupbuy.dao.model.TradeOrderDO;
 import com.knowledge.marketing.groupbuy.enums.GroupStatus;
@@ -58,7 +59,7 @@ public class PaymentSettlementService {
     }
 
     @Transactional
-    public GroupOrderBO settle(String orderId, String paymentTradeNo, String authenticatedUserId) {
+    public TradeOrderBO settle(String orderId, String paymentTradeNo, String authenticatedUserId) {
         TradeOrderDO order = orderMapper.selectById(orderId);
         if (order == null) {
             throw BusinessException.notFound("订单不存在");
@@ -96,8 +97,8 @@ public class PaymentSettlementService {
         return toBusinessObject(orderMapper.selectById(orderId));
     }
 
-    private GroupOrderBO toBusinessObject(TradeOrderDO order) {
-        return new GroupOrderBO(order.getId(), order.getGroupId(), order.getStatus(), order.getAmountCents());
+    private TradeOrderBO toBusinessObject(TradeOrderDO order) {
+        return GroupBuyConverter.toBO(order);
     }
 
     private void confirmReservationAfterCommit(TradeOrderDO order) {

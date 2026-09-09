@@ -42,7 +42,7 @@ springdoc:
     path: /swagger-ui.html
     operations-sorter: method
     tags-sorter: alpha
-  packages-to-scan: com.knowledge.marketing.groupbuy.controller
+  packages-to-scan: com.knowledge.marketing
   paths-to-match: /api/marketing/**
 
 management:
