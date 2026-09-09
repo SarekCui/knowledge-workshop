@@ -1,0 +1,66 @@
+server:
+  port: 8081
+
+spring:
+  application:
+    name: knowledge-marketing
+  cloud:
+    nacos:
+      discovery:
+        enabled: ${NACOS_DISCOVERY_ENABLED:true}
+        server-addr: ${NACOS_SERVER_ADDR:127.0.0.1:8848}
+        namespace: ${NACOS_NAMESPACE:public}
+        group: ${NACOS_GROUP:DEFAULT_GROUP}
+  datasource:
+    url: ${MARKETING_DB_URL:jdbc:mysql://localhost:3307/knowledge_marketing?useUnicode=true&characterEncoding=utf8&serverTimezone=UTC}
+    username: ${MARKETING_DB_USERNAME:root}
+    password: ${MARKETING_DB_PASSWORD:root}
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6380}
+      password: ${REDIS_PASSWORD:}
+  rabbitmq:
+    host: ${RABBITMQ_HOST:localhost}
+    port: ${RABBITMQ_PORT:5672}
+    username: ${RABBITMQ_USERNAME:knowledge}
+    password: ${RABBITMQ_PASSWORD:knowledge}
+    publisher-confirm-type: correlated
+  flyway:
+    enabled: true
+
+mybatis-plus:
+  configuration:
+    map-underscore-to-camel-case: true
+  global-config:
+    banner: false
+
+springdoc:
+  api-docs:
+    path: /v3/api-docs
+  swagger-ui:
+    path: /swagger-ui.html
+    operations-sorter: method
+    tags-sorter: alpha
+  packages-to-scan: com.knowledge.marketing.groupbuy.controller
+  paths-to-match: /api/marketing/**
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics
+
+knowledge:
+  security:
+    jwt:
+      secret: ${JWT_SECRET}
+      issuer: knowledge-iam
+
+logging:
+  structured:
+    format:
+      console: logstash
+    json:
+      add:
+        service: ${spring.application.name}

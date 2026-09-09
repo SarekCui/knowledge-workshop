@@ -1,0 +1,47 @@
+server:
+  port: 8083
+
+spring:
+  application:
+    name: knowledge-iam
+  cloud:
+    nacos:
+      discovery:
+        enabled: ${NACOS_DISCOVERY_ENABLED:true}
+        server-addr: ${NACOS_SERVER_ADDR:127.0.0.1:8848}
+        namespace: ${NACOS_NAMESPACE:public}
+        group: ${NACOS_GROUP:DEFAULT_GROUP}
+  datasource:
+    url: ${IAM_DB_URL:jdbc:mysql://localhost:3307/knowledge_iam?useUnicode=true&characterEncoding=utf8&serverTimezone=UTC}
+    username: ${IAM_DB_USERNAME:root}
+    password: ${IAM_DB_PASSWORD:root}
+  flyway:
+    enabled: true
+
+mybatis-plus:
+  configuration:
+    map-underscore-to-camel-case: true
+  global-config:
+    banner: false
+
+knowledge:
+  security:
+    jwt:
+      secret: ${JWT_SECRET}
+      issuer: knowledge-iam
+      access-token-ttl: 30m
+      refresh-token-ttl: 30d
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+
+logging:
+  structured:
+    format:
+      console: logstash
+    json:
+      add:
+        service: ${spring.application.name}

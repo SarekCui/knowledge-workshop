@@ -1,0 +1,52 @@
+services:
+  nacos:
+    image: nacos/nacos-server:v3.0.3
+    environment:
+      MODE: standalone
+      NACOS_AUTH_ENABLE: "false"
+      NACOS_AUTH_TOKEN: VGhpc0lzQURldmVsb3BtZW50T25seU5hY29zU2VjcmV0S2V5VGhhdElzTG9uZ0Vub3VnaDEyMzQ1Njc4OTA=
+      NACOS_AUTH_IDENTITY_KEY: localDevelopmentIdentity
+      NACOS_AUTH_IDENTITY_VALUE: knowledgeWorkshopLocalOnly
+    ports:
+      - "8848:8848"
+      - "8849:8080"
+      - "9848:9848"
+
+  mysql:
+    image: mysql:8.4
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+    ports:
+      - "3307:3306"
+    volumes:
+      - mysql-data:/var/lib/mysql
+      - ./infra/mysql/init.sql:/docker-entrypoint-initdb.d/00-init.sql:ro
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-proot"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  redis:
+    image: redis:7.4-alpine
+    ports:
+      - "6380:6379"
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - redis-data:/data
+
+  rabbitmq:
+    image: rabbitmq:4.1-management-alpine
+    environment:
+      RABBITMQ_DEFAULT_USER: knowledge
+      RABBITMQ_DEFAULT_PASS: knowledge
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    volumes:
+      - rabbit-data:/var/lib/rabbitmq
+
+volumes:
+  mysql-data:
+  redis-data:
+  rabbit-data:

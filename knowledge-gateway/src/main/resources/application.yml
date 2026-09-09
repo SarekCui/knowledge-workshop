@@ -1,0 +1,180 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: knowledge-gateway
+  cloud:
+    nacos:
+      discovery:
+        enabled: ${NACOS_DISCOVERY_ENABLED:true}
+        server-addr: ${NACOS_SERVER_ADDR:127.0.0.1:8848}
+        namespace: ${NACOS_NAMESPACE:public}
+        group: ${NACOS_GROUP:DEFAULT_GROUP}
+    gateway:
+      server:
+        webflux:
+          httpclient:
+            connect-timeout: 1000
+            response-timeout: 3s
+            pool:
+              type: fixed
+              max-connections: 500
+              acquire-timeout: 500
+              metrics: true
+          routes:
+            - id: marketing
+              uri: ${MARKETING_URI:lb://knowledge-marketing}
+              predicates:
+                - Path=/api/marketing/**
+              filters:
+                - name: CircuitBreaker
+                  args:
+                    name: marketingGateway
+                    fallbackUri: forward:/internal/gateway/fallback/marketing
+                    statusCodes: INTERNAL_SERVER_ERROR,BAD_GATEWAY,SERVICE_UNAVAILABLE,GATEWAY_TIMEOUT
+                - name: Bulkhead
+                  args:
+                    name: marketingGateway
+                    maxConcurrentCalls: 100
+                - name: Retry
+                  args:
+                    retries: 1
+                    statuses: BAD_GATEWAY,SERVICE_UNAVAILABLE,GATEWAY_TIMEOUT
+                    methods: GET
+                    backoff:
+                      firstBackoff: 50ms
+                      maxBackoff: 100ms
+                      factor: 2
+                      basedOnPreviousValue: false
+                    timeout: 500ms
+            - id: iam
+              uri: ${IAM_URI:lb://knowledge-iam}
+              predicates:
+                - Path=/api/iam/**
+              filters:
+                - name: CircuitBreaker
+                  args:
+                    name: iamGateway
+                    fallbackUri: forward:/internal/gateway/fallback/iam
+                    statusCodes: INTERNAL_SERVER_ERROR,BAD_GATEWAY,SERVICE_UNAVAILABLE,GATEWAY_TIMEOUT
+                - name: Bulkhead
+                  args:
+                    name: iamGateway
+                    maxConcurrentCalls: 50
+                - name: Retry
+                  args:
+                    retries: 1
+                    statuses: BAD_GATEWAY,SERVICE_UNAVAILABLE,GATEWAY_TIMEOUT
+                    methods: GET
+                    backoff:
+                      firstBackoff: 50ms
+                      maxBackoff: 100ms
+                      factor: 2
+                      basedOnPreviousValue: false
+                    timeout: 500ms
+            - id: points
+              uri: ${POINTS_URI:lb://knowledge-points}
+              predicates:
+                - Path=/api/points/**
+              filters:
+                - name: CircuitBreaker
+                  args:
+                    name: pointsGateway
+                    fallbackUri: forward:/internal/gateway/fallback/points
+                    statusCodes: INTERNAL_SERVER_ERROR,BAD_GATEWAY,SERVICE_UNAVAILABLE,GATEWAY_TIMEOUT
+                - name: Bulkhead
+                  args:
+                    name: pointsGateway
+                    maxConcurrentCalls: 100
+                - name: Retry
+                  args:
+                    retries: 1
+                    statuses: BAD_GATEWAY,SERVICE_UNAVAILABLE,GATEWAY_TIMEOUT
+                    methods: GET
+                    backoff:
+                      firstBackoff: 50ms
+                      maxBackoff: 100ms
+                      factor: 2
+                      basedOnPreviousValue: false
+                    timeout: 500ms
+            - id: learning
+              uri: ${LEARNING_URI:lb://knowledge-learning}
+              predicates:
+                - Path=/api/learning/**
+              filters:
+                - name: CircuitBreaker
+                  args:
+                    name: learningGateway
+                    fallbackUri: forward:/internal/gateway/fallback/learning
+                    statusCodes: INTERNAL_SERVER_ERROR,BAD_GATEWAY,SERVICE_UNAVAILABLE,GATEWAY_TIMEOUT
+                - name: Bulkhead
+                  args:
+                    name: learningGateway
+                    maxConcurrentCalls: 150
+                - name: Retry
+                  args:
+                    retries: 1
+                    statuses: BAD_GATEWAY,SERVICE_UNAVAILABLE,GATEWAY_TIMEOUT
+                    methods: GET
+                    backoff:
+                      firstBackoff: 50ms
+                      maxBackoff: 100ms
+                      factor: 2
+                      basedOnPreviousValue: false
+                    timeout: 500ms
+
+resilience4j:
+  circuitbreaker:
+    configs:
+      gateway-default:
+        slidingWindowType: COUNT_BASED
+        slidingWindowSize: 10
+        minimumNumberOfCalls: 5
+        failureRateThreshold: 50
+        permittedNumberOfCallsInHalfOpenState: 2
+        waitDurationInOpenState: 10s
+        automaticTransitionFromOpenToHalfOpenEnabled: true
+    instances:
+      marketingGateway:
+        baseConfig: gateway-default
+      iamGateway:
+        baseConfig: gateway-default
+      pointsGateway:
+        baseConfig: gateway-default
+      learningGateway:
+        baseConfig: gateway-default
+  timelimiter:
+    configs:
+      gateway-default:
+        timeoutDuration: 3s
+        cancelRunningFuture: true
+    instances:
+      marketingGateway:
+        baseConfig: gateway-default
+      iamGateway:
+        baseConfig: gateway-default
+      pointsGateway:
+        baseConfig: gateway-default
+      learningGateway:
+        baseConfig: gateway-default
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+
+knowledge:
+  security:
+    jwt:
+      secret: ${JWT_SECRET}
+      issuer: knowledge-iam
+
+logging:
+  structured:
+    format:
+      console: logstash
+    json:
+      add:
+        service: ${spring.application.name}
