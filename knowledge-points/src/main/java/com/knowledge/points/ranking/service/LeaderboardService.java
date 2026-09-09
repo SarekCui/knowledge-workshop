@@ -13,6 +13,7 @@ import org.springframework.stereotype.Service;
 @Service
 public class LeaderboardService {
 
+    private static final Duration RANKING_RETENTION = Duration.ofDays(400);
     private final StringRedisTemplate redisTemplate;
 
     public LeaderboardService(StringRedisTemplate redisTemplate) {
@@ -21,6 +22,7 @@ public class LeaderboardService {
 
     public void synchronizeScore(String season, String userId, long totalPoints) {
         redisTemplate.opsForZSet().add(key(season), userId, totalPoints);
+        redisTemplate.expire(key(season), RANKING_RETENTION);
     }
 
     public void replace(String season, List<UserPointTotalBO> totals) {
@@ -36,6 +38,7 @@ public class LeaderboardService {
         }
         redisTemplate.expire(staging, Duration.ofMinutes(10));
         redisTemplate.rename(staging, destination);
+        redisTemplate.expire(destination, RANKING_RETENTION);
     }
 
     public List<LeaderboardItemBO> top(String season, int limit) {
@@ -54,6 +57,6 @@ public class LeaderboardService {
     }
 
     static String key(String season) {
-        return "kw:points:ranking:" + season;
+        return RankingRedisKey.season(season);
     }
 }

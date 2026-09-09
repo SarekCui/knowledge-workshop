@@ -7,7 +7,7 @@ import org.apache.ibatis.annotations.Insert;
 public interface MessageInboxMapper extends BaseMapper<MessageInboxDO> {
 
     @Insert("""
-            INSERT IGNORE INTO lr_message_inbox (id, consumer_name, event_id, processed_at)
+            INSERT IGNORE INTO message_inbox (id, consumer_name, event_id, processed_at)
             VALUES (#{id}, #{consumerName}, #{eventId}, #{processedAt})
             """)
     int insertIgnore(MessageInboxDO inbox);

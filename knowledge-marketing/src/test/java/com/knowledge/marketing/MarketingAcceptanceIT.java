@@ -126,11 +126,11 @@ class MarketingAcceptanceIT {
     @BeforeEach
     void prepare() {
         executor = Executors.newFixedThreadPool(100);
-        jdbcTemplate.update("DELETE FROM mk_notification_task");
-        jdbcTemplate.update("DELETE FROM mk_trade_order");
-        jdbcTemplate.update("DELETE FROM mk_group_participant");
-        jdbcTemplate.update("DELETE FROM mk_group_order");
-        jdbcTemplate.update("DELETE FROM mk_group_activity");
+        jdbcTemplate.update("DELETE FROM notification_task");
+        jdbcTemplate.update("DELETE FROM trade_order");
+        jdbcTemplate.update("DELETE FROM group_participant");
+        jdbcTemplate.update("DELETE FROM group_order");
+        jdbcTemplate.update("DELETE FROM group_activity");
         redisTemplate.getConnectionFactory().getConnection().serverCommands().flushDb();
         rabbitAdmin.purgeQueue(MarketingRabbitConfiguration.GROUP_FORMED_QUEUE, true);
         insertActivityAndGroup(10);
@@ -152,7 +152,7 @@ class MarketingAcceptanceIT {
                 ready.countDown();
                 start.await();
                 return purchaseService.join(new JoinGroupBO(
-                        "request-" + index, "activity-acceptance", "group-acceptance", "user-" + index));
+                        "group-acceptance", "user-" + index));
             }));
         }
         ready.await();
@@ -163,44 +163,44 @@ class MarketingAcceptanceIT {
         for (int i = 0; i < accepted.size(); i++) {
             String orderId = accepted.get(i).orderId();
             String userId = jdbcTemplate.queryForObject(
-                    "SELECT user_id FROM mk_trade_order WHERE id = ?", String.class, orderId);
+                    "SELECT user_id FROM trade_order WHERE id = ?", String.class, orderId);
             settlementService.settle(orderId, "payment-" + i, userId);
         }
 
-        assertThat(count("SELECT COUNT(*) FROM mk_group_participant WHERE status = 'CONFIRMED'"))
+        assertThat(count("SELECT COUNT(*) FROM group_participant WHERE status = 'CONFIRMED'"))
                 .isEqualTo(10);
-        assertThat(count("SELECT confirmed_count FROM mk_group_order WHERE id = 'group-acceptance'"))
+        assertThat(count("SELECT confirmed_count FROM group_order WHERE id = 'group-acceptance'"))
                 .isEqualTo(10);
-        assertThat(count("SELECT COUNT(*) FROM mk_trade_order"))
+        assertThat(count("SELECT COUNT(*) FROM trade_order"))
                 .isEqualTo(10);
-        assertThat(redisTemplate.opsForValue().get("kw:marketing:group:occupied:group-acceptance"))
+        assertThat(redisTemplate.opsForValue().get("kw:marketing:group:{group-acceptance}:occupied"))
                 .isEqualTo("10");
     }
 
     @Test
     void duplicateRequestIsIdempotentAndDatabaseFailureReleasesRedisSlot() {
         JoinGroupBO request = new JoinGroupBO(
-                "same-request", "activity-acceptance", "group-acceptance", "same-user");
+                "group-acceptance", "same-user");
         GroupOrderBO first = purchaseService.join(request);
         GroupOrderBO second = purchaseService.join(request);
 
         assertThat(second.orderId()).isEqualTo(first.orderId());
-        assertThat(count("SELECT COUNT(*) FROM mk_trade_order WHERE business_request_id = 'same-request'"))
+        assertThat(count("SELECT COUNT(*) FROM trade_order WHERE group_id = 'group-acceptance' AND user_id = 'same-user'"))
                 .isEqualTo(1);
 
         jdbcTemplate.update("""
-                INSERT INTO mk_group_participant
-                  (id, activity_id, group_id, user_id, request_id, status, created_at, updated_at)
+                INSERT INTO group_participant
+                  (id, activity_id, group_id, user_id, status, created_at, updated_at)
                 VALUES (?, 'activity-acceptance', 'group-acceptance', 'blocked-user',
-                        'old-request', 'RELEASED', UTC_TIMESTAMP(3), UTC_TIMESTAMP(3))
+                        'RELEASED', UTC_TIMESTAMP(3), UTC_TIMESTAMP(3))
                 """, UUID.randomUUID().toString());
 
         assertThatThrownBy(() -> purchaseService.join(new JoinGroupBO(
-                "failing-request", "activity-acceptance", "group-acceptance", "blocked-user")))
+                "group-acceptance", "blocked-user")))
                 .isInstanceOf(RuntimeException.class);
-        assertThat(redisTemplate.opsForValue().get("kw:marketing:group:occupied:group-acceptance"))
+        assertThat(redisTemplate.opsForValue().get("kw:marketing:group:{group-acceptance}:occupied"))
                 .isEqualTo("1");
-        assertThat(count("SELECT COUNT(*) FROM mk_trade_order WHERE business_request_id = 'failing-request'"))
+        assertThat(count("SELECT COUNT(*) FROM trade_order WHERE group_id = 'group-acceptance' AND user_id = 'blocked-user'"))
                 .isZero();
     }
 
@@ -233,11 +233,10 @@ class MarketingAcceptanceIT {
 
         assertThat(document.path("info").path("title").asText())
                 .isEqualTo("Knowledge Workshop Marketing API");
-        JsonNode join = document.path("paths").path("/api/marketing/groups/join").path("post");
+        JsonNode join = document.path("paths").path("/api/marketing/groups/{groupId}/join").path("post");
         assertThat(join.isMissingNode()).isFalse();
         assertThat(join.path("responses").has("200")).isTrue();
         assertThat(join.path("parameters").toString()).contains("X-Request-Id");
-        assertThat(document.path("components").path("schemas").has("JoinGroupDTO")).isTrue();
         assertThat(document.path("paths").has("/api/marketing/orders/{orderId}/pay")).isTrue();
     }
 
@@ -263,9 +262,8 @@ class MarketingAcceptanceIT {
     @Test
     void protectedApiRejectsMissingToken() {
         ResponseEntity<JsonNode> response = restTemplate.postForEntity(
-                "/api/marketing/groups/join",
-                new com.knowledge.marketing.groupbuy.dto.JoinGroupDTO(
-                        "unauthorized-request", "activity-acceptance", "group-acceptance"),
+                "/api/marketing/groups/group-acceptance/join",
+                null,
                 JsonNode.class);
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
@@ -280,21 +278,21 @@ class MarketingAcceptanceIT {
         HttpHeaders headers = new HttpHeaders();
         headers.setBearerAuth(accessToken("jwt-user"));
         ResponseEntity<JsonNode> response = restTemplate.exchange(
-                "/api/marketing/groups/join", HttpMethod.POST,
-                new HttpEntity<>(new com.knowledge.marketing.groupbuy.dto.JoinGroupDTO(
-                        "jwt-request", "activity-acceptance", "group-acceptance"), headers),
+                "/api/marketing/groups/group-acceptance/join", HttpMethod.POST,
+                new HttpEntity<>(headers),
                 JsonNode.class);
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
         assertThat(jdbcTemplate.queryForObject(
-                "SELECT user_id FROM mk_trade_order WHERE business_request_id = 'jwt-request'", String.class))
+                "SELECT user_id FROM trade_order WHERE group_id = 'group-acceptance' AND user_id = 'jwt-user'",
+                String.class))
                 .isEqualTo("jwt-user");
     }
 
     @Test
     void anotherUserCannotPayOwnedOrder() {
         GroupOrderBO order = purchaseService.join(new JoinGroupBO(
-                "owned-request", "activity-acceptance", "group-acceptance", "owner-user"));
+                "group-acceptance", "owner-user"));
 
         assertThatThrownBy(() -> settlementService.settle(order.orderId(), "foreign-payment", "other-user"))
                 .isInstanceOfSatisfying(BusinessException.class,
@@ -333,14 +331,14 @@ class MarketingAcceptanceIT {
 
     private void insertActivityAndGroup(int capacity) {
         jdbcTemplate.update("""
-                INSERT INTO mk_group_activity
+                INSERT INTO group_activity
                   (id, course_id, status, start_time, end_time, target_count, max_join_per_user,
                    price_cents, version, created_at, updated_at)
                 VALUES ('activity-acceptance', 'course-java', 'ACTIVE', UTC_TIMESTAMP(3) - INTERVAL 1 DAY,
                         UTC_TIMESTAMP(3) + INTERVAL 1 DAY, ?, 1, 9900, 0, UTC_TIMESTAMP(3), UTC_TIMESTAMP(3))
                 """, capacity);
         jdbcTemplate.update("""
-                INSERT INTO mk_group_order
+                INSERT INTO group_order
                   (id, activity_id, owner_user_id, status, target_count, confirmed_count,
                    expires_at, version, created_at, updated_at)
                 VALUES ('group-acceptance', 'activity-acceptance', 'owner', 'FORMING', ?, 0,

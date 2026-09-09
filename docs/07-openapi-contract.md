@@ -17,7 +17,7 @@
 
 | 服务 | 方法 | 路径 | 幂等键/查询边界 |
 |---|---|---|---|
-| marketing | POST | `/api/marketing/groups/join` | `requestId` |
+| marketing | POST | `/api/marketing/groups/{groupId}/join` | JWT `sub` + `groupId`；无请求体 |
 | marketing | POST | `/api/marketing/orders/{orderId}/pay` | `paymentTradeNo` |
 | points | POST | `/api/points/sign-ins` | JWT `sub` + UTC 日期；请求体不接收用户 ID |
 | points | GET | `/api/points/leaderboard` | `limit` 限制为 1—1000 |
@@ -27,7 +27,7 @@
 | learning | GET | `/api/learning/progress/recent`、`/api/learning/entitlements` | 只读取当前 JWT 用户数据 |
 | learning | POST/PUT/PATCH/DELETE | `/api/learning/admin/**` | 仅 `ADMIN` 角色；修改使用 `version` |
 
-所有接口接受可选请求头 `X-Request-Id`。缺失、空白或超过 128 字符时，服务端生成新值；响应头和响应体均返回最终请求 ID。
+所有接口接受可选请求头 `X-Request-Id`。缺失、格式非法或超过 64 字符时，服务端生成新值；响应头和响应体均返回最终请求 ID。该值只用于技术追踪，不参与业务幂等。
 
 ## 4. 响应和错误
 

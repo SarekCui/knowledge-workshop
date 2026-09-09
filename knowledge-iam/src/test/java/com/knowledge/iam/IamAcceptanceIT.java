@@ -54,18 +54,18 @@ class IamAcceptanceIT {
 
     @BeforeEach
     void seedUser() {
-        jdbcTemplate.update("DELETE FROM iam_refresh_token");
-        jdbcTemplate.update("DELETE FROM iam_user_role");
-        jdbcTemplate.update("DELETE FROM iam_role");
-        jdbcTemplate.update("DELETE FROM iam_user_account");
-        jdbcTemplate.update("INSERT INTO iam_user_account "
+        jdbcTemplate.update("DELETE FROM refresh_token");
+        jdbcTemplate.update("DELETE FROM user_role");
+        jdbcTemplate.update("DELETE FROM access_role");
+        jdbcTemplate.update("DELETE FROM user_account");
+        jdbcTemplate.update("INSERT INTO user_account "
                         + "(id, username, password_hash, status, created_at, updated_at) "
                         + "VALUES (?, ?, ?, 'ENABLED', UTC_TIMESTAMP(3), UTC_TIMESTAMP(3))",
                 "user-demo", "demo", passwordEncoder.encode("Knowledge@123"));
-        jdbcTemplate.update("INSERT INTO iam_role "
+        jdbcTemplate.update("INSERT INTO access_role "
                         + "(id, code, name, status, created_at, updated_at) "
                         + "VALUES ('role-learner', 'LEARNER', '学习者', 'ENABLED', UTC_TIMESTAMP(3), UTC_TIMESTAMP(3))");
-        jdbcTemplate.update("INSERT INTO iam_user_role (id, user_id, role_id, created_at) "
+        jdbcTemplate.update("INSERT INTO user_role (id, user_id, role_id, created_at) "
                 + "VALUES ('user-role-demo', 'user-demo', 'role-learner', UTC_TIMESTAMP(3))");
     }
 
@@ -83,7 +83,7 @@ class IamAcceptanceIT {
         assertThat(data.get("refreshToken").toString()).isNotBlank();
         assertThat(data.get("refreshExpiresIn")).isEqualTo(2592000);
         assertThat(jdbcTemplate.queryForObject(
-                "SELECT COUNT(*) FROM iam_refresh_token WHERE token_hash = ?",
+                "SELECT COUNT(*) FROM refresh_token WHERE token_hash = ?",
                 Integer.class, data.get("refreshToken"))).isZero();
     }
 

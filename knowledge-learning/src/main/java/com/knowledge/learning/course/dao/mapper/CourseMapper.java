@@ -9,7 +9,7 @@ import org.apache.ibatis.annotations.Update;
 public interface CourseMapper extends BaseMapper<CourseDO> {
 
     @Update("""
-            UPDATE lr_course
+            UPDATE course
                SET title = #{title}, summary = #{summary}, cover_url = #{coverUrl},
                    price_cents = #{priceCents}, version = version + 1, updated_at = #{updatedAt}
              WHERE id = #{id} AND version = #{version}
@@ -20,7 +20,7 @@ public interface CourseMapper extends BaseMapper<CourseDO> {
                       @Param("updatedAt") LocalDateTime updatedAt);
 
     @Update("""
-            UPDATE lr_course
+            UPDATE course
                SET status = #{status}, version = version + 1, updated_at = #{updatedAt}
              WHERE id = #{id} AND version = #{version}
             """)

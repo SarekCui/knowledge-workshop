@@ -33,19 +33,20 @@ public class ReservationCompensationService {
     public int compensate(int limit) {
         int released = 0;
         for (SlotReservationService.ExpiredReservation reservation : slotService.findExpired(limit)) {
-            GroupParticipantDO participant = participantMapper.findByRequestId(reservation.requestId());
+            GroupParticipantDO participant = participantMapper.findByGroupAndUser(
+                    reservation.groupId(), reservation.userId());
             if (participant != null && participant.getStatus() == ParticipantStatus.CONFIRMED) {
-                slotService.confirm(reservation.groupId(), reservation.requestId(), reservation.userId());
+                slotService.confirm(reservation.groupId(), reservation.userId());
                 continue;
             }
             Boolean committed = transactionTemplate.execute(status -> {
                 LocalDateTime now = LocalDateTime.now(clock);
-                orderMapper.closePendingByRequestId(reservation.requestId(), now);
-                participantMapper.releaseByRequestId(reservation.requestId(), now);
+                orderMapper.closePendingByGroupAndUser(reservation.groupId(), reservation.userId(), now);
+                participantMapper.releaseByGroupAndUser(reservation.groupId(), reservation.userId(), now);
                 return Boolean.TRUE;
             });
             if (Boolean.TRUE.equals(committed)) {
-                slotService.release(reservation.groupId(), reservation.requestId(), reservation.userId());
+                slotService.release(reservation.groupId(), reservation.userId());
                 released++;
             }
         }

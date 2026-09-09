@@ -7,7 +7,7 @@ import lombok.Setter;
 
 @Getter
 @Setter
-@TableName("pt_season_account")
+@TableName("season_account")
 public class SeasonAccountDO {
     private String season;
     private String userId;

@@ -34,10 +34,9 @@ public class GroupJoinTransactionService {
         LocalDateTime now = LocalDateTime.now(clock);
         GroupParticipantDO participant = new GroupParticipantDO();
         participant.setId(UUID.randomUUID().toString());
-        participant.setActivityId(request.activityId());
+        participant.setActivityId(activity.getId());
         participant.setGroupId(request.groupId());
         participant.setUserId(request.userId());
-        participant.setRequestId(request.requestId());
         participant.setStatus(ParticipantStatus.RESERVED);
         participant.setCreatedAt(now);
         participant.setUpdatedAt(now);
@@ -45,7 +44,6 @@ public class GroupJoinTransactionService {
 
         TradeOrderDO order = new TradeOrderDO();
         order.setId(UUID.randomUUID().toString());
-        order.setBusinessRequestId(request.requestId());
         order.setUserId(request.userId());
         order.setCourseId(activity.getCourseId());
         order.setActivityId(activity.getId());

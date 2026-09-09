@@ -26,7 +26,7 @@ public class SignInService {
         this.transactionService = transactionService;
     }
 
-    @DistributedLock(keys = "'kw:points:signin-lock:' + #userId + ':' + #date", leaseTime = 15)
+    @DistributedLock(keys = SignInRedisKey.LOCK_SPEL, leaseTime = 15)
     public SignInBO sign(String userId, LocalDate date) {
         SignInRecordDO existing = find(userId, date);
         if (existing != null) {

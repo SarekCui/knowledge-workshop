@@ -16,7 +16,7 @@ public class LeaderboardRebuildService {
         this.leaderboardService = leaderboardService;
     }
 
-    @DistributedLock(keys = "'kw:points:job:rebuild:' + #route.season", leaseTime = 60)
+    @DistributedLock(keys = RankingRedisKey.REBUILD_LOCK_SPEL, leaseTime = 60)
     public int rebuild(QuarterTableRouteBO route) {
         var totals = ledgerMapper.sumPointsByUser(route.tableName());
         leaderboardService.replace(route.season(), totals);

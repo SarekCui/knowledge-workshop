@@ -10,14 +10,14 @@ import org.apache.ibatis.annotations.Update;
 public interface NoteMapper extends BaseMapper<NoteDO> {
 
     @Select("""
-            SELECT * FROM lr_note
+            SELECT * FROM note
              WHERE user_id = #{userId} AND client_request_id = #{clientRequestId}
              LIMIT 1
             """)
     NoteDO findByRequest(@Param("userId") String userId, @Param("clientRequestId") String clientRequestId);
 
     @Update("""
-            UPDATE lr_note
+            UPDATE note
                SET title = #{title}, content = #{content}, video_position_ms = #{videoPositionMs},
                    version = version + 1, updated_at = #{updatedAt}
              WHERE id = #{id} AND user_id = #{userId} AND version = #{version} AND deleted = 0
@@ -28,7 +28,7 @@ public interface NoteMapper extends BaseMapper<NoteDO> {
                       @Param("updatedAt") LocalDateTime updatedAt);
 
     @Update("""
-            UPDATE lr_note
+            UPDATE note
                SET title = #{title}, version = version + 1, updated_at = #{updatedAt}
              WHERE id = #{id} AND user_id = #{userId} AND version = #{version} AND deleted = 0
             """)
@@ -36,13 +36,13 @@ public interface NoteMapper extends BaseMapper<NoteDO> {
                @Param("version") int version, @Param("updatedAt") LocalDateTime updatedAt);
 
     @Update("""
-            UPDATE lr_note
+            UPDATE note
                SET deleted = 1, version = version + 1, updated_at = #{updatedAt}
              WHERE id = #{id} AND user_id = #{userId} AND version = #{version} AND deleted = 0
             """)
     int softDelete(@Param("id") String id, @Param("userId") String userId,
                    @Param("version") int version, @Param("updatedAt") LocalDateTime updatedAt);
 
-    @Select("SELECT COUNT(*) FROM lr_note WHERE chapter_id = #{chapterId} AND deleted = 0")
+    @Select("SELECT COUNT(*) FROM note WHERE chapter_id = #{chapterId} AND deleted = 0")
     long countActiveByChapter(@Param("chapterId") String chapterId);
 }

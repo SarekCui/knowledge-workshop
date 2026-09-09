@@ -9,7 +9,7 @@ import org.apache.ibatis.annotations.Update;
 public interface TradeOrderMapper extends BaseMapper<TradeOrderDO> {
 
     @Update("""
-            UPDATE mk_trade_order
+            UPDATE trade_order
                SET status = 'PAID', payment_trade_no = #{paymentTradeNo}, paid_at = #{now}, updated_at = #{now}
              WHERE id = #{orderId} AND status = 'PENDING_PAYMENT'
             """)
@@ -17,8 +17,9 @@ public interface TradeOrderMapper extends BaseMapper<TradeOrderDO> {
                  @Param("now") LocalDateTime now);
 
     @Update("""
-            UPDATE mk_trade_order SET status = 'CLOSED', updated_at = #{now}
-             WHERE business_request_id = #{requestId} AND status = 'PENDING_PAYMENT'
+            UPDATE trade_order SET status = 'CLOSED', updated_at = #{now}
+             WHERE group_id = #{groupId} AND user_id = #{userId} AND status = 'PENDING_PAYMENT'
             """)
-    int closePendingByRequestId(@Param("requestId") String requestId, @Param("now") LocalDateTime now);
+    int closePendingByGroupAndUser(@Param("groupId") String groupId, @Param("userId") String userId,
+                                   @Param("now") LocalDateTime now);
 }

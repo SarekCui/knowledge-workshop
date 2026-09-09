@@ -9,7 +9,7 @@ import lombok.Setter;
 
 @Getter
 @Setter
-@TableName("lr_video_progress")
+@TableName("video_progress")
 public class VideoProgressDO {
     @TableId
     private String id;

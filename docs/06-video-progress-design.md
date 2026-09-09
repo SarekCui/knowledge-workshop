@@ -122,7 +122,7 @@ flowchart LR
 ### 6.1 断点快照
 
 ```text
-Key:  kw:learning:progress:{userId}:{videoId}:{videoVersion}
+Key:  kw:learning:progress:snapshot:{userId}:{videoId}:{videoVersion}
 Type: Hash
 TTL:  7 days，读取后续期，上限 30 days
 
@@ -141,7 +141,7 @@ updatedAt
 ### 6.2 活跃播放会话
 
 ```text
-Key:  kw:learning:session:{userId}:{videoId}
+Key:  kw:learning:progress:session:{userId}:{videoId}
 Type: Hash
 TTL:  2 hours
 
@@ -156,7 +156,7 @@ lastHeartbeatAt
 ### 6.3 最近学习列表
 
 ```text
-Key:    kw:learning:recent:{userId}
+Key:    kw:learning:progress:recent:{userId}
 Type:   Sorted Set
 Member: videoId:videoVersion
 Score:  serverUpdatedAtEpochMs
@@ -167,7 +167,7 @@ Score:  serverUpdatedAtEpochMs
 ### 6.4 真实观看区间（首版落在 MySQL）
 
 ```text
-Table:  lr_watched_segment
+Table:  watched_segment
 Unique: user_id + video_id + video_version + segment_index
 Unit:   每条记录表示一个完整观看的 10 秒片段
 ```
@@ -178,7 +178,7 @@ Unit:   每条记录表示一个完整观看的 10 秒片段
 
 ## 7. MySQL 数据模型
 
-### `lr_video_progress`
+### `video_progress`
 
 | 字段 | 说明 |
 |---|---|
@@ -196,11 +196,11 @@ Unit:   每条记录表示一个完整观看的 10 秒片段
 
 条件更新语义：只有 `(incomingEpoch > storedEpoch) OR (incomingEpoch = storedEpoch AND incomingSeq > storedSeq)` 才能更新断点；观看区间和事件 Inbox 仍可独立进行幂等合并。
 
-### `lr_progress_event_inbox`
+### `progress_event_inbox`
 
 以 `consumer_name + event_id` 为唯一键，记录消费结果。它与进度更新处于同一数据库事务，事务成功后才确认 RabbitMQ 消息。
 
-### `lr_watched_segment`
+### `watched_segment`
 
 保存已完整观看的 10 秒片段，业务唯一键保证重复、重叠区间不会重复累计。
 

@@ -9,7 +9,7 @@ import org.apache.ibatis.annotations.Param;
 public interface PointAccountMapper extends BaseMapper<PointAccountDO> {
 
     @Insert("""
-            INSERT INTO pt_point_account(user_id, total_points, version, updated_at)
+            INSERT INTO point_account(user_id, total_points, version, updated_at)
             VALUES(#{userId}, #{points}, 0, #{now})
             ON DUPLICATE KEY UPDATE total_points = total_points + #{points},
                                     version = version + 1, updated_at = #{now}

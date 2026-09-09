@@ -8,7 +8,7 @@ import lombok.Setter;
 
 @Getter
 @Setter
-@TableName("lr_note")
+@TableName("note")
 public class NoteDO {
     @TableId
     private String id;

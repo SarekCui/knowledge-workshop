@@ -9,7 +9,7 @@ import lombok.Setter;
 
 @Getter
 @Setter
-@TableName("mk_group_activity")
+@TableName("group_activity")
 public class GroupActivityDO {
     @TableId
     private String id;

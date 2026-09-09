@@ -9,7 +9,7 @@ import org.apache.ibatis.annotations.Select;
 public interface WatchedSegmentMapper extends BaseMapper<WatchedSegmentDO> {
 
     @Insert("""
-            INSERT IGNORE INTO lr_watched_segment
+            INSERT IGNORE INTO watched_segment
               (id, user_id, video_id, video_version, segment_index, created_at)
             VALUES
               (#{id}, #{userId}, #{videoId}, #{videoVersion}, #{segmentIndex}, #{createdAt})
@@ -17,7 +17,7 @@ public interface WatchedSegmentMapper extends BaseMapper<WatchedSegmentDO> {
     int insertIgnore(WatchedSegmentDO segment);
 
     @Select("""
-            SELECT COUNT(*) FROM lr_watched_segment
+            SELECT COUNT(*) FROM watched_segment
              WHERE user_id = #{userId} AND video_id = #{videoId} AND video_version = #{videoVersion}
             """)
     long countSegments(@Param("userId") String userId, @Param("videoId") String videoId,

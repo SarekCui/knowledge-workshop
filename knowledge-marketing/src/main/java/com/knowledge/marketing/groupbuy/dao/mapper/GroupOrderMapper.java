@@ -9,7 +9,7 @@ import org.apache.ibatis.annotations.Update;
 public interface GroupOrderMapper extends BaseMapper<GroupOrderDO> {
 
     @Update("""
-            UPDATE mk_group_order
+            UPDATE group_order
                SET status = CASE WHEN confirmed_count + 1 >= target_count THEN 'FORMED' ELSE status END,
                    confirmed_count = confirmed_count + 1,
                    version = version + 1,

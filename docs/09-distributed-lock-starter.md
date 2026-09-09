@@ -11,8 +11,8 @@
 ```java
 @DistributedLock(
         keys = {
-                "'kw:marketing:activity:' + #activityId",
-                "'kw:marketing:user:' + #userId"
+                "'kw:marketing:lock:activity:' + #activityId",
+                "'kw:marketing:lock:user:' + #userId"
         },
         lockType = LockType.REENTRANT,
         waitTime = 3,
@@ -73,7 +73,7 @@ DistributedLockAspect
 
 ## 6. 使用约束
 
-- 锁 Key 遵循 `kw:{service}:{purpose}:{businessKey}`。
+- 锁 Key 遵循 `kw:{service}:lock:{purpose}:{businessIdentifiers}`，由所属业务域集中定义 SpEL 模板。
 - 持锁期间禁止慢速远程调用和无界循环。
 - 锁只能降低并发冲突，关键写入仍需数据库唯一索引或条件更新兜底。
 - 固定租约必须覆盖临界区合理最长耗时；耗时不可预测时使用 `-1` 看门狗并保证方法最终退出。

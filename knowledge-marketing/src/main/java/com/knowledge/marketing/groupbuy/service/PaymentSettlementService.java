@@ -4,6 +4,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.knowledge.api.marketing.dto.GroupFormedEventDTO;
 import com.knowledge.common.exception.BusinessException;
+import com.knowledge.common.web.RequestIdSupport;
 import com.knowledge.marketing.groupbuy.bo.GroupOrderBO;
 import com.knowledge.marketing.groupbuy.dao.model.GroupOrderDO;
 import com.knowledge.marketing.groupbuy.dao.model.TradeOrderDO;
@@ -21,6 +22,7 @@ import java.time.LocalDateTime;
 import java.util.UUID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.slf4j.MDC;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionSynchronization;
@@ -79,7 +81,7 @@ public class PaymentSettlementService {
         if (orderMapper.markPaid(orderId, paymentTradeNo, now) != 1) {
             throw BusinessException.conflict("订单状态已发生变化，请查询结果");
         }
-        if (participantMapper.confirmByRequestId(order.getBusinessRequestId(), now) != 1) {
+        if (participantMapper.confirmByGroupAndUser(order.getGroupId(), order.getUserId(), now) != 1) {
             throw BusinessException.conflict("参团记录状态异常");
         }
         if (groupMapper.confirmOne(order.getGroupId(), now) != 1) {
@@ -101,11 +103,11 @@ public class PaymentSettlementService {
     private void confirmReservationAfterCommit(TradeOrderDO order) {
         Runnable confirmation = () -> {
             try {
-                slotReservationService.confirm(order.getGroupId(), order.getBusinessRequestId(), order.getUserId());
+                slotReservationService.confirm(order.getGroupId(), order.getUserId());
             } catch (RuntimeException exception) {
                 // The database is already committed. The reservation compensation job will retry this cleanup.
-                LOG.warn("Failed to confirm Redis reservation after payment commit, requestId={}",
-                        order.getBusinessRequestId(), exception);
+                LOG.warn("Failed to confirm Redis reservation after payment commit, groupId={}, userId={}",
+                        order.getGroupId(), order.getUserId(), exception);
             }
         };
         if (TransactionSynchronizationManager.isActualTransactionActive()) {
@@ -124,7 +126,7 @@ public class PaymentSettlementService {
         String eventId = "group-formed:" + group.getId();
         GroupFormedEventDTO event = new GroupFormedEventDTO(eventId, group.getId(), group.getActivityId(),
                 order.getCourseId(), participantMapper.findConfirmedUserIds(group.getId()),
-                order.getBusinessRequestId(), Instant.now(clock), 1);
+                RequestIdSupport.resolve(MDC.get("requestId")), Instant.now(clock), 1);
         NotificationTaskDO task = new NotificationTaskDO();
         task.setId(UUID.randomUUID().toString());
         task.setEventId(eventId);

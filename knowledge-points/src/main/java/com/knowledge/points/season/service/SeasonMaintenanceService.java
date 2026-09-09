@@ -40,7 +40,7 @@ public class SeasonMaintenanceService {
     }
 
     @Transactional
-    @DistributedLock(keys = "'kw:points:job:snapshot:' + #season", leaseTime = 60)
+    @DistributedLock(keys = SeasonRedisKey.SNAPSHOT_LOCK_SPEL, leaseTime = 60)
     public int snapshot(String season, int topN) {
         if (executed("SEASON_SNAPSHOT", season)) {
             return 0;
@@ -62,7 +62,7 @@ public class SeasonMaintenanceService {
     }
 
     @Transactional
-    @DistributedLock(keys = "'kw:points:job:archive:' + #route.season", leaseTime = 60)
+    @DistributedLock(keys = SeasonRedisKey.ARCHIVE_LOCK_SPEL, leaseTime = 60)
     public boolean archive(QuarterTableRouteBO route) {
         if (executed("SEASON_ARCHIVE", route.season())) {
             return false;

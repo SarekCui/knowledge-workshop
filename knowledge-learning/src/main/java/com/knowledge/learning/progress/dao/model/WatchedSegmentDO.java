@@ -8,7 +8,7 @@ import lombok.Setter;
 
 @Getter
 @Setter
-@TableName("lr_watched_segment")
+@TableName("watched_segment")
 public class WatchedSegmentDO {
     @TableId
     private String id;

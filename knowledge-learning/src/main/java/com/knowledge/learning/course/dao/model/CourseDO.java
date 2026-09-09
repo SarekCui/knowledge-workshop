@@ -9,7 +9,7 @@ import lombok.Setter;
 
 @Getter
 @Setter
-@TableName("lr_course")
+@TableName("course")
 public class CourseDO {
     @TableId
     private String id;

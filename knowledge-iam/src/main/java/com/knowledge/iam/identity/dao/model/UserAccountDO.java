@@ -5,7 +5,7 @@ import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
 import java.time.LocalDateTime;
 
-@TableName("iam_user_account")
+@TableName("user_account")
 public class UserAccountDO {
 
     @TableId(type = IdType.INPUT)

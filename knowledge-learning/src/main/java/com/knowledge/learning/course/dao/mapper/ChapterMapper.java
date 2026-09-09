@@ -10,11 +10,11 @@ import org.apache.ibatis.annotations.Update;
 
 public interface ChapterMapper extends BaseMapper<ChapterDO> {
 
-    @Select("SELECT * FROM lr_chapter WHERE video_id = #{videoId} ORDER BY video_version DESC LIMIT 1")
+    @Select("SELECT * FROM chapter WHERE video_id = #{videoId} ORDER BY video_version DESC LIMIT 1")
     ChapterDO findLatestByVideoId(@Param("videoId") String videoId);
 
     @Update("""
-            UPDATE lr_chapter
+            UPDATE chapter
                SET title = #{title}, sort_order = #{sortOrder}, video_url = #{videoUrl},
                    video_duration_ms = #{durationMs}, status = #{status},
                    version = version + 1, updated_at = #{updatedAt}
@@ -25,6 +25,6 @@ public interface ChapterMapper extends BaseMapper<ChapterDO> {
                       @Param("durationMs") long durationMs, @Param("status") String status,
                       @Param("version") int version, @Param("updatedAt") LocalDateTime updatedAt);
 
-    @Delete("DELETE FROM lr_chapter WHERE id = #{id} AND version = #{version}")
+    @Delete("DELETE FROM chapter WHERE id = #{id} AND version = #{version}")
     int deleteWithVersion(@Param("id") String id, @Param("version") int version);
 }

@@ -92,10 +92,8 @@ curl -X POST http://localhost:8080/api/iam/auth/login \
 # 将登录响应 data.accessToken 的值放入 ACCESS_TOKEN，再访问受保护接口。
 export ACCESS_TOKEN='<data.accessToken>'
 
-curl -X POST http://localhost:8080/api/marketing/groups/join \
-  -H 'Content-Type: application/json' \
-  -H "Authorization: Bearer ${ACCESS_TOKEN}" \
-  -d '{"requestId":"request-001","activityId":"activity-demo","groupId":"group-demo"}'
+curl -X POST http://localhost:8080/api/marketing/groups/group-demo/join \
+  -H "Authorization: Bearer ${ACCESS_TOKEN}"
 
 curl -X POST http://localhost:8080/api/points/sign-ins \
   -H "Authorization: Bearer ${ACCESS_TOKEN}"

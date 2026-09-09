@@ -8,7 +8,7 @@ import lombok.Setter;
 
 @Getter
 @Setter
-@TableName("pt_job_execution")
+@TableName("job_execution")
 public class JobExecutionDO {
     @TableId
     private String id;

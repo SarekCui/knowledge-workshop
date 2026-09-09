@@ -36,8 +36,7 @@ class JoinRulesTest {
 
     @Test
     void rejectsParticipationLimitAndFullGroup() {
-        JoinValidationContext limited = new JoinValidationContext(context().request(), context().activity(),
-                context().group(), 2);
+        JoinValidationContext limited = new JoinValidationContext(context().activity(), context().group(), 2);
         assertThatThrownBy(() -> new ParticipationLimitRule().check(limited))
                 .isInstanceOf(BusinessException.class);
 
@@ -64,6 +63,6 @@ class JoinRulesTest {
         group.setExpiresAt(LocalDateTime.of(2026, 9, 4, 0, 0));
         group.setConfirmedCount(0);
         group.setTargetCount(3);
-        return new JoinValidationContext(new JoinGroupBO("r1", "a1", "g1", "u1"), activity, group, 0);
+        return new JoinValidationContext(activity, group, 0);
     }
 }

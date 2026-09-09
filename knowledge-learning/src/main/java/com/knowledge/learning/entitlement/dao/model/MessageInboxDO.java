@@ -8,7 +8,7 @@ import lombok.Setter;
 
 @Getter
 @Setter
-@TableName("lr_message_inbox")
+@TableName("message_inbox")
 public class MessageInboxDO {
     @TableId
     private String id;

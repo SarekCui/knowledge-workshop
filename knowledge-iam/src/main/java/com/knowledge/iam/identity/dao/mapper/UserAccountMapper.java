@@ -10,6 +10,6 @@ import org.apache.ibatis.annotations.Select;
 public interface UserAccountMapper extends BaseMapper<UserAccountDO> {
 
     @Select("SELECT id, username, password_hash, status, created_at, updated_at "
-            + "FROM iam_user_account WHERE username = #{username} LIMIT 1")
+            + "FROM user_account WHERE username = #{username} LIMIT 1")
     UserAccountDO selectByUsername(@Param("username") String username);
 }

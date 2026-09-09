@@ -46,61 +46,55 @@ public class GroupPurchaseService {
     }
 
     public GroupOrderBO join(JoinGroupBO request) {
-        TradeOrderDO existing = findByRequestId(request.requestId());
+        TradeOrderDO existing = findByGroupAndUser(request.groupId(), request.userId());
         if (existing != null) {
-            verifyIdempotentRequest(existing, request);
             return toBusinessObject(existing);
         }
 
-        GroupActivityDO activity = activityMapper.selectById(request.activityId());
         GroupOrderDO group = groupMapper.selectById(request.groupId());
-        if (activity == null || group == null || !request.activityId().equals(group.getActivityId())) {
-            throw BusinessException.notFound("拼团活动或团不存在");
+        if (group == null) {
+            throw BusinessException.notFound("团不存在");
+        }
+        GroupActivityDO activity = activityMapper.selectById(group.getActivityId());
+        if (activity == null) {
+            throw BusinessException.notFound("拼团活动不存在");
         }
         long userJoinCount = participantMapper.selectCount(new LambdaQueryWrapper<GroupParticipantDO>()
-                .eq(GroupParticipantDO::getActivityId, request.activityId())
+                .eq(GroupParticipantDO::getActivityId, activity.getId())
                 .eq(GroupParticipantDO::getUserId, request.userId())
                 .in(GroupParticipantDO::getStatus, ParticipantStatus.RESERVED, ParticipantStatus.CONFIRMED));
-        ruleChain.check(new JoinValidationContext(request, activity, group, userJoinCount));
+        ruleChain.check(new JoinValidationContext(activity, group, userJoinCount));
 
         SlotReservationService.ReservationResult reservation = slotReservationService.reserve(
-                request.groupId(), request.requestId(), request.userId(), group.getConfirmedCount(),
+                request.groupId(), request.userId(), group.getConfirmedCount(),
                 group.getTargetCount());
         try {
             TradeOrderDO created = transactionService.createPendingOrder(request, activity);
             return toBusinessObject(created);
         } catch (DuplicateKeyException exception) {
-            TradeOrderDO concurrent = findByRequestId(request.requestId());
+            TradeOrderDO concurrent = findByGroupAndUser(request.groupId(), request.userId());
             if (reservation == SlotReservationService.ReservationResult.ACQUIRED) {
-                slotReservationService.release(request.groupId(), request.requestId(), request.userId());
+                slotReservationService.release(request.groupId(), request.userId());
             }
             if (concurrent != null) {
-                verifyIdempotentRequest(concurrent, request);
                 return toBusinessObject(concurrent);
             }
             throw exception;
         } catch (RuntimeException exception) {
             if (reservation == SlotReservationService.ReservationResult.ACQUIRED) {
-                slotReservationService.release(request.groupId(), request.requestId(), request.userId());
+                slotReservationService.release(request.groupId(), request.userId());
             }
             throw exception;
         }
     }
 
-    private TradeOrderDO findByRequestId(String requestId) {
+    private TradeOrderDO findByGroupAndUser(String groupId, String userId) {
         return tradeOrderMapper.selectOne(new LambdaQueryWrapper<TradeOrderDO>()
-                .eq(TradeOrderDO::getBusinessRequestId, requestId));
+                .eq(TradeOrderDO::getGroupId, groupId)
+                .eq(TradeOrderDO::getUserId, userId));
     }
 
     private GroupOrderBO toBusinessObject(TradeOrderDO order) {
         return new GroupOrderBO(order.getId(), order.getGroupId(), order.getStatus(), order.getAmountCents());
-    }
-
-    private void verifyIdempotentRequest(TradeOrderDO existing, JoinGroupBO request) {
-        if (!existing.getUserId().equals(request.userId())
-                || !existing.getActivityId().equals(request.activityId())
-                || !existing.getGroupId().equals(request.groupId())) {
-            throw BusinessException.conflict("请求幂等键对应的业务参数不一致");
-        }
     }
 }

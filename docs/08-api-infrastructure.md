@@ -81,7 +81,7 @@ Controller 显式声明包装类型，禁止用全局 `ResponseBodyAdvice` 偷�
 - 创建型 `POST` 优先使用数据库唯一约束保护业务次级键。
 - 需要网络失败后原样安全重试时使用 `Idempotency-Key`，并保存请求摘要和首次结果；相同键不同参数返回 409。
 - 更新资源使用版本号或 `ETag/If-Match`，版本不一致返回 409。
-- 当前拼团接口的 `requestId` 是已持久化业务幂等键；后续兼容迁移为 `Idempotency-Key` 时必须先更新 OpenAPI 并提供过渡期。
+- 拼团参团使用 `groupId + JWT sub` 作为自然业务幂等键，数据库参与记录和交易订单均以 `(group_id, user_id)` 唯一约束兜底；`X-Request-Id` 不参与幂等。
 
 ## 6. 查询与分页
 
