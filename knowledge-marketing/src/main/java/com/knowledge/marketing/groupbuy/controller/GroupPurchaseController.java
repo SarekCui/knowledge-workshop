@@ -2,10 +2,9 @@ package com.knowledge.marketing.groupbuy.controller;
 
 import com.knowledge.api.common.Result;
 import com.knowledge.common.exception.RequestIdFilter;
+import com.knowledge.marketing.groupbuy.bo.JoinGroupBO;
 import com.knowledge.marketing.groupbuy.bo.GroupOrderBO;
 import com.knowledge.marketing.groupbuy.converter.GroupOrderConverter;
-import com.knowledge.marketing.groupbuy.converter.JoinGroupConverter;
-import com.knowledge.marketing.groupbuy.dto.JoinGroupDTO;
 import com.knowledge.marketing.groupbuy.dto.PaymentDTO;
 import com.knowledge.marketing.groupbuy.service.GroupPurchaseService;
 import com.knowledge.marketing.groupbuy.service.PaymentSettlementService;
@@ -36,12 +35,14 @@ public class GroupPurchaseController {
         this.settlementService = settlementService;
     }
 
-    @PostMapping("/groups/join")
-    @Operation(summary = "参加拼团", description = "使用请求幂等键申请团名额并创建待支付订单")
-    public Result<GroupOrderVO> join(@Valid @RequestBody JoinGroupDTO request,
+    @PostMapping("/groups/{groupId}/join")
+    @Operation(summary = "参加拼团", description = "同一用户重复加入同一团时返回已有订单")
+    public Result<GroupOrderVO> join(
+                                     @Parameter(description = "团实例 ID", example = "group-demo", required = true)
+                                     @PathVariable String groupId,
                                      @Parameter(hidden = true) HttpServletRequest servletRequest) {
         return Result.ok(GroupOrderConverter.toVO(
-                purchaseService.join(JoinGroupConverter.toBO(request, UserContext.getUserId()))),
+                purchaseService.join(new JoinGroupBO(groupId, UserContext.getUserId()))),
                 requestId(servletRequest));
     }
 

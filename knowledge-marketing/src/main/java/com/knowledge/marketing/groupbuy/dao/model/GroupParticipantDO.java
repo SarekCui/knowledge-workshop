@@ -9,14 +9,13 @@ import lombok.Setter;
 
 @Getter
 @Setter
-@TableName("mk_group_participant")
+@TableName("group_participant")
 public class GroupParticipantDO {
     @TableId
     private String id;
     private String activityId;
     private String groupId;
     private String userId;
-    private String requestId;
     private ParticipantStatus status;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;

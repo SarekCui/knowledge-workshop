@@ -9,7 +9,7 @@ import lombok.Setter;
 
 @Getter
 @Setter
-@TableName("mk_notification_task")
+@TableName("notification_task")
 public class NotificationTaskDO {
     @TableId
     private String id;

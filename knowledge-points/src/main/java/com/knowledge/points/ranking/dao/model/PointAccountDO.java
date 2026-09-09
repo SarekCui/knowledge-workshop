@@ -8,7 +8,7 @@ import lombok.Setter;
 
 @Getter
 @Setter
-@TableName("pt_point_account")
+@TableName("point_account")
 public class PointAccountDO {
     @TableId
     private String userId;

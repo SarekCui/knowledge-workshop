@@ -11,14 +11,14 @@ import org.apache.ibatis.annotations.Update;
 public interface NotificationTaskMapper extends BaseMapper<NotificationTaskDO> {
 
     @Select("""
-            SELECT * FROM mk_notification_task
+            SELECT * FROM notification_task
              WHERE status IN ('PENDING', 'RETRY') AND next_retry_at <= #{now}
              ORDER BY created_at LIMIT #{limit}
             """)
     List<NotificationTaskDO> findDispatchable(@Param("now") LocalDateTime now, @Param("limit") int limit);
 
     @Update("""
-            UPDATE mk_notification_task SET status = 'SENDING', updated_at = #{now}
+            UPDATE notification_task SET status = 'SENDING', updated_at = #{now}
              WHERE id = #{id} AND status IN ('PENDING', 'RETRY')
             """)
     int claim(@Param("id") String id, @Param("now") LocalDateTime now);

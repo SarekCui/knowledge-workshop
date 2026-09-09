@@ -10,23 +10,25 @@ import org.apache.ibatis.annotations.Update;
 
 public interface GroupParticipantMapper extends BaseMapper<GroupParticipantDO> {
 
-    @Select("SELECT * FROM mk_group_participant WHERE request_id = #{requestId} LIMIT 1")
-    GroupParticipantDO findByRequestId(@Param("requestId") String requestId);
+    @Select("SELECT * FROM group_participant WHERE group_id = #{groupId} AND user_id = #{userId} LIMIT 1")
+    GroupParticipantDO findByGroupAndUser(@Param("groupId") String groupId, @Param("userId") String userId);
 
     @Update("""
-            UPDATE mk_group_participant SET status = 'CONFIRMED', updated_at = #{now}
-             WHERE request_id = #{requestId} AND status = 'RESERVED'
+            UPDATE group_participant SET status = 'CONFIRMED', updated_at = #{now}
+             WHERE group_id = #{groupId} AND user_id = #{userId} AND status = 'RESERVED'
             """)
-    int confirmByRequestId(@Param("requestId") String requestId, @Param("now") LocalDateTime now);
+    int confirmByGroupAndUser(@Param("groupId") String groupId, @Param("userId") String userId,
+                              @Param("now") LocalDateTime now);
 
     @Update("""
-            UPDATE mk_group_participant SET status = 'RELEASED', updated_at = #{now}
-             WHERE request_id = #{requestId} AND status = 'RESERVED'
+            UPDATE group_participant SET status = 'RELEASED', updated_at = #{now}
+             WHERE group_id = #{groupId} AND user_id = #{userId} AND status = 'RESERVED'
             """)
-    int releaseByRequestId(@Param("requestId") String requestId, @Param("now") LocalDateTime now);
+    int releaseByGroupAndUser(@Param("groupId") String groupId, @Param("userId") String userId,
+                              @Param("now") LocalDateTime now);
 
     @Select("""
-            SELECT user_id FROM mk_group_participant
+            SELECT user_id FROM group_participant
              WHERE group_id = #{groupId} AND status = 'CONFIRMED'
              ORDER BY created_at, id
             """)

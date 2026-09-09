@@ -8,7 +8,7 @@ import lombok.Setter;
 
 @Getter
 @Setter
-@TableName("pt_season_archive")
+@TableName("season_archive")
 public class SeasonArchiveDO {
     @TableId
     private String id;

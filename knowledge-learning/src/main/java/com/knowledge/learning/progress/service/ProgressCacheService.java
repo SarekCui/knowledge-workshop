@@ -80,11 +80,11 @@ public class ProgressCacheService {
     }
 
     private String progressKey(String userId, String videoId, int version) {
-        return "kw:learning:progress:" + userId + ":" + videoId + ":" + version;
+        return ProgressRedisKey.snapshot(userId, videoId, version);
     }
 
     private String recentKey(String userId) {
-        return "kw:learning:recent:" + userId;
+        return ProgressRedisKey.recent(userId);
     }
 
     private String text(Map<Object, Object> values, String key) {

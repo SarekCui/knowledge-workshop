@@ -7,7 +7,7 @@ import org.apache.ibatis.annotations.Insert;
 public interface CourseEntitlementMapper extends BaseMapper<CourseEntitlementDO> {
 
     @Insert("""
-            INSERT IGNORE INTO lr_course_entitlement
+            INSERT IGNORE INTO course_entitlement
               (id, user_id, course_id, source_type, source_id, status, effective_at,
                expires_at, created_at, updated_at)
             VALUES

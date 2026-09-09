@@ -61,20 +61,20 @@ public class PlaybackSessionService {
     }
 
     public void validate(String userId, String videoId, String sessionId, long epoch, int videoVersion) {
-        Map<Object, Object> session = redisTemplate.opsForHash().entries(sessionKey(userId, videoId));
+        Map<Object, Object> session = redisTemplate.opsForHash().entries(ProgressRedisKey.session(userId, videoId));
         if (!sessionId.equals(String.valueOf(session.get("sessionId")))
                 || !String.valueOf(epoch).equals(String.valueOf(session.get("sessionEpoch")))
                 || !String.valueOf(videoVersion).equals(String.valueOf(session.get("videoVersion")))) {
             throw BusinessException.conflict("播放会话已过期或已被新设备替代，请重新创建会话");
         }
-        redisTemplate.expire(sessionKey(userId, videoId), Duration.ofHours(2));
+        redisTemplate.expire(ProgressRedisKey.session(userId, videoId), Duration.ofHours(2));
     }
 
     private String epochKey(String userId, String videoId) {
-        return "kw:learning:session-epoch:" + userId + ":" + videoId;
+        return ProgressRedisKey.sessionEpoch(userId, videoId);
     }
 
     private String sessionKey(String userId, String videoId) {
-        return "kw:learning:session:" + userId + ":" + videoId;
+        return ProgressRedisKey.session(userId, videoId);
     }
 }

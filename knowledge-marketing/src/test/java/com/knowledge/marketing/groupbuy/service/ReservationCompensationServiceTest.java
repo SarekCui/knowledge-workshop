@@ -22,16 +22,16 @@ class ReservationCompensationServiceTest {
         GroupParticipantMapper participants = mock(GroupParticipantMapper.class);
         TradeOrderMapper orders = mock(TradeOrderMapper.class);
         TransactionTemplate transaction = mock(TransactionTemplate.class);
-        var expired = new SlotReservationService.ExpiredReservation("g1", "r1", "u1");
+        var expired = new SlotReservationService.ExpiredReservation("g1", "u1");
         when(slots.findExpired(10)).thenReturn(List.of(expired));
         GroupParticipantDO participant = new GroupParticipantDO();
         participant.setStatus(ParticipantStatus.CONFIRMED);
-        when(participants.findByRequestId("r1")).thenReturn(participant);
+        when(participants.findByGroupAndUser("g1", "u1")).thenReturn(participant);
 
         new ReservationCompensationService(slots, participants, orders, transaction, Clock.systemUTC())
                 .compensate(10);
 
-        verify(slots).confirm("g1", "r1", "u1");
-        verify(slots, never()).release("g1", "r1", "u1");
+        verify(slots).confirm("g1", "u1");
+        verify(slots, never()).release("g1", "u1");
     }
 }

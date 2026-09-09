@@ -138,14 +138,14 @@ class LearningAcceptanceIT {
         rabbitAdmin.purgeQueue(LearningRabbitConfiguration.PROGRESS_QUEUE, true);
         rabbitAdmin.purgeQueue(LearningRabbitConfiguration.GROUP_FORMED_DEAD_QUEUE, true);
         rabbitAdmin.purgeQueue(LearningRabbitConfiguration.PROGRESS_DEAD_QUEUE, true);
-        jdbcTemplate.update("DELETE FROM lr_progress_event_inbox");
-        jdbcTemplate.update("DELETE FROM lr_watched_segment");
-        jdbcTemplate.update("DELETE FROM lr_video_progress");
-        jdbcTemplate.update("DELETE FROM lr_message_inbox");
-        jdbcTemplate.update("DELETE FROM lr_course_entitlement");
-        jdbcTemplate.update("DELETE FROM lr_note");
-        jdbcTemplate.update("DELETE FROM lr_chapter");
-        jdbcTemplate.update("DELETE FROM lr_course");
+        jdbcTemplate.update("DELETE FROM progress_event_inbox");
+        jdbcTemplate.update("DELETE FROM watched_segment");
+        jdbcTemplate.update("DELETE FROM video_progress");
+        jdbcTemplate.update("DELETE FROM message_inbox");
+        jdbcTemplate.update("DELETE FROM course_entitlement");
+        jdbcTemplate.update("DELETE FROM note");
+        jdbcTemplate.update("DELETE FROM chapter");
+        jdbcTemplate.update("DELETE FROM course");
         redisTemplate.getConnectionFactory().getConnection().serverCommands().flushDb();
         insertCourseAndChapter();
         insertEntitlement("user-a");
@@ -189,9 +189,9 @@ class LearningAcceptanceIT {
                 LearningRabbitConfiguration.GROUP_FORMED_ROUTING_KEY, payload);
 
         await().atMost(Duration.ofSeconds(10)).untilAsserted(() -> {
-            assertThat(count("SELECT COUNT(*) FROM lr_course_entitlement WHERE source_id = 'group-1'"))
+            assertThat(count("SELECT COUNT(*) FROM course_entitlement WHERE source_id = 'group-1'"))
                     .isEqualTo(2);
-            assertThat(count("SELECT COUNT(*) FROM lr_message_inbox WHERE event_id = 'group-event-1'"))
+            assertThat(count("SELECT COUNT(*) FROM message_inbox WHERE event_id = 'group-event-1'"))
                     .isEqualTo(1);
         });
     }
@@ -226,9 +226,9 @@ class LearningAcceptanceIT {
             assertThat(progress.status()).isEqualTo(ProgressStatus.COMPLETED);
             assertThat(progress.completionRate()).isEqualTo(9000);
             assertThat(progress.watchedSeconds()).isEqualTo(90);
-            assertThat(count("SELECT COUNT(*) FROM lr_progress_event_inbox WHERE event_id = 'progress-event-1'"))
+            assertThat(count("SELECT COUNT(*) FROM progress_event_inbox WHERE event_id = 'progress-event-1'"))
                     .isEqualTo(1);
-            assertThat(count("SELECT COUNT(*) FROM lr_watched_segment")).isEqualTo(9);
+            assertThat(count("SELECT COUNT(*) FROM watched_segment")).isEqualTo(9);
         });
     }
 
@@ -262,7 +262,7 @@ class LearningAcceptanceIT {
 
         VideoProgressBO restored = progressQueryService.get("user-a", "video-java-1");
         assertThat(restored.resumePositionMs()).isEqualTo(45_000);
-        assertThat(redisTemplate.hasKey("kw:learning:progress:user-a:video-java-1:1")).isTrue();
+        assertThat(redisTemplate.hasKey("kw:learning:progress:snapshot:user-a:video-java-1:1")).isTrue();
 
         JsonNode openApi = restTemplate.getForObject("/v3/api-docs", JsonNode.class);
         assertThat(openApi.path("info").path("title").asText())
@@ -298,13 +298,13 @@ class LearningAcceptanceIT {
 
     private void insertCourseAndChapter() {
         jdbcTemplate.update("""
-                INSERT INTO lr_course
+                INSERT INTO course
                   (id, title, summary, price_cents, status, version, created_at, updated_at)
                 VALUES ('course-java', 'Java', 'Java course', 9900, 'PUBLISHED', 0,
                         UTC_TIMESTAMP(3), UTC_TIMESTAMP(3))
                 """);
         jdbcTemplate.update("""
-                INSERT INTO lr_chapter
+                INSERT INTO chapter
                   (id, course_id, title, sort_order, video_id, video_url, video_duration_ms,
                    video_version, status, version, created_at, updated_at)
                 VALUES ('chapter-java-1', 'course-java', 'Chapter 1', 1, 'video-java-1',
@@ -315,7 +315,7 @@ class LearningAcceptanceIT {
 
     private void insertEntitlement(String userId) {
         jdbcTemplate.update("""
-                INSERT INTO lr_course_entitlement
+                INSERT INTO course_entitlement
                   (id, user_id, course_id, source_type, source_id, status,
                    effective_at, created_at, updated_at)
                 VALUES (?, ?, 'course-java', 'TEST', ?, 'ACTIVE',

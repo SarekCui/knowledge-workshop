@@ -103,14 +103,14 @@ class PointsAcceptanceIT {
     @BeforeEach
     void prepare() {
         rabbitAdmin.purgeQueue(PointsRabbitConfiguration.POINT_GRANT_QUEUE, true);
-        jdbcTemplate.update("DELETE FROM pt_job_execution");
-        jdbcTemplate.update("DELETE FROM pt_season_archive");
-        jdbcTemplate.update("DELETE FROM pt_season_snapshot");
-        jdbcTemplate.update("DELETE FROM pt_season_account");
-        jdbcTemplate.update("DELETE FROM pt_point_account");
-        jdbcTemplate.update("DELETE FROM pt_point_task");
-        jdbcTemplate.update("DELETE FROM pt_signin_record");
-        jdbcTemplate.update("DELETE FROM pt_point_ledger_2026_q3");
+        jdbcTemplate.update("DELETE FROM job_execution");
+        jdbcTemplate.update("DELETE FROM season_archive");
+        jdbcTemplate.update("DELETE FROM season_snapshot");
+        jdbcTemplate.update("DELETE FROM season_account");
+        jdbcTemplate.update("DELETE FROM point_account");
+        jdbcTemplate.update("DELETE FROM point_task");
+        jdbcTemplate.update("DELETE FROM signin_record");
+        jdbcTemplate.update("DELETE FROM point_ledger_2026_q3");
         redisTemplate.getConnectionFactory().getConnection().serverCommands().flushDb();
     }
 
@@ -124,11 +124,11 @@ class PointsAcceptanceIT {
         }
 
         await().atMost(Duration.ofSeconds(20)).untilAsserted(() -> {
-            assertThat(count("SELECT COUNT(*) FROM pt_point_ledger_2026_q3 WHERE event_id = 'duplicate-event'"))
+            assertThat(count("SELECT COUNT(*) FROM point_ledger_2026_q3 WHERE event_id = 'duplicate-event'"))
                     .isEqualTo(1);
-            assertThat(count("SELECT total_points FROM pt_point_account WHERE user_id = 'user-duplicate'"))
+            assertThat(count("SELECT total_points FROM point_account WHERE user_id = 'user-duplicate'"))
                     .isEqualTo(20);
-            assertThat(count("SELECT points FROM pt_season_account "
+            assertThat(count("SELECT points FROM season_account "
                     + "WHERE season = '2026-Q3' AND user_id = 'user-duplicate'"))
                     .isEqualTo(20);
         });
@@ -139,7 +139,7 @@ class PointsAcceptanceIT {
         consumer.consume(objectMapper.writeValueAsString(event("event-a", "user-a", 30)));
         consumer.consume(objectMapper.writeValueAsString(event("event-b", "user-b", 50)));
         consumer.consume(objectMapper.writeValueAsString(event("event-c", "user-a", 40)));
-        redisTemplate.delete("kw:points:ranking:" + route.season());
+        redisTemplate.delete("kw:points:ranking:season:" + route.season());
 
         assertThat(leaderboardService.top(route.season(), 10)).isEmpty();
         assertThat(rebuildService.rebuild(route)).isEqualTo(2);
@@ -149,12 +149,12 @@ class PointsAcceptanceIT {
 
         assertThat(maintenanceService.snapshot(route.season(), 10)).isEqualTo(2);
         assertThat(maintenanceService.snapshot(route.season(), 10)).isZero();
-        assertThat(count("SELECT COUNT(*) FROM pt_season_snapshot WHERE season = '2026-Q3'"))
+        assertThat(count("SELECT COUNT(*) FROM season_snapshot WHERE season = '2026-Q3'"))
                 .isEqualTo(2);
 
         assertThat(maintenanceService.archive(route)).isTrue();
         assertThat(maintenanceService.archive(route)).isFalse();
-        assertThat(count("SELECT COUNT(*) FROM pt_season_archive WHERE season = '2026-Q3'"))
+        assertThat(count("SELECT COUNT(*) FROM season_archive WHERE season = '2026-Q3'"))
                 .isEqualTo(1);
     }
 

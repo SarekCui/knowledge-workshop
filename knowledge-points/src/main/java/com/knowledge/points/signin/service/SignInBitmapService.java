@@ -1,5 +1,6 @@
 package com.knowledge.points.signin.service;
 
+import java.time.Duration;
 import java.time.LocalDate;
 import java.time.YearMonth;
 import org.springframework.data.redis.core.StringRedisTemplate;
@@ -8,6 +9,7 @@ import org.springframework.stereotype.Service;
 @Service
 public class SignInBitmapService {
 
+    private static final Duration BITMAP_RETENTION = Duration.ofDays(550);
     private final StringRedisTemplate redisTemplate;
 
     public SignInBitmapService(StringRedisTemplate redisTemplate) {
@@ -15,8 +17,10 @@ public class SignInBitmapService {
     }
 
     public boolean markSigned(String userId, LocalDate date) {
-        Boolean previous = redisTemplate.opsForValue().setBit(key(userId, YearMonth.from(date)),
+        String key = key(userId, YearMonth.from(date));
+        Boolean previous = redisTemplate.opsForValue().setBit(key,
                 date.getDayOfMonth() - 1L, true);
+        redisTemplate.expire(key, BITMAP_RETENTION);
         return Boolean.TRUE.equals(previous);
     }
 
@@ -36,6 +40,6 @@ public class SignInBitmapService {
     }
 
     private String key(String userId, YearMonth month) {
-        return "kw:points:signin:" + userId + ':' + month;
+        return SignInRedisKey.bitmap(userId, month);
     }
 }

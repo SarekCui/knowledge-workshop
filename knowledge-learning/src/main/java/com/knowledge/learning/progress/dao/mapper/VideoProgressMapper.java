@@ -10,7 +10,7 @@ import org.apache.ibatis.annotations.Select;
 public interface VideoProgressMapper extends BaseMapper<VideoProgressDO> {
 
     @Insert("""
-            INSERT IGNORE INTO lr_video_progress
+            INSERT IGNORE INTO video_progress
               (id, user_id, course_id, chapter_id, video_id, video_version,
                resume_position_ms, max_position_ms, duration_ms, watched_seconds,
                completion_rate, status, last_session_epoch, last_sequence,
@@ -25,7 +25,7 @@ public interface VideoProgressMapper extends BaseMapper<VideoProgressDO> {
                   @Param("durationMs") long durationMs, @Param("now") LocalDateTime now);
 
     @Select("""
-            SELECT * FROM lr_video_progress
+            SELECT * FROM video_progress
              WHERE user_id = #{userId} AND video_id = #{videoId} AND video_version = #{videoVersion}
              FOR UPDATE
             """)
@@ -33,13 +33,13 @@ public interface VideoProgressMapper extends BaseMapper<VideoProgressDO> {
                                   @Param("videoVersion") int videoVersion);
 
     @Select("""
-            SELECT * FROM lr_video_progress
+            SELECT * FROM video_progress
              WHERE user_id = #{userId} AND video_id = #{videoId} AND video_version = #{videoVersion}
              LIMIT 1
             """)
     VideoProgressDO findOne(@Param("userId") String userId, @Param("videoId") String videoId,
                             @Param("videoVersion") int videoVersion);
 
-    @Select("SELECT COUNT(*) FROM lr_video_progress WHERE chapter_id = #{chapterId}")
+    @Select("SELECT COUNT(*) FROM video_progress WHERE chapter_id = #{chapterId}")
     long countByChapter(@Param("chapterId") String chapterId);
 }

@@ -9,7 +9,7 @@ import lombok.Setter;
 
 @Getter
 @Setter
-@TableName("mk_group_order")
+@TableName("group_order")
 public class GroupOrderDO {
     @TableId
     private String id;

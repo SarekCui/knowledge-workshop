@@ -8,7 +8,7 @@ import lombok.Setter;
 
 @Getter
 @Setter
-@TableName("lr_progress_event_inbox")
+@TableName("progress_event_inbox")
 public class ProgressEventInboxDO {
     @TableId
     private String id;

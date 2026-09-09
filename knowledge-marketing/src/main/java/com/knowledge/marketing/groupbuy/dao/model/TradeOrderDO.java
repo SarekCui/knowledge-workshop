@@ -9,11 +9,10 @@ import lombok.Setter;
 
 @Getter
 @Setter
-@TableName("mk_trade_order")
+@TableName("trade_order")
 public class TradeOrderDO {
     @TableId
     private String id;
-    private String businessRequestId;
     private String paymentTradeNo;
     private String userId;
     private String courseId;

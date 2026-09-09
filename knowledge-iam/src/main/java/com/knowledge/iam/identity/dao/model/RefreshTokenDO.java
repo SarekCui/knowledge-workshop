@@ -5,7 +5,7 @@ import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
 import java.time.LocalDateTime;
 
-@TableName("iam_refresh_token")
+@TableName("refresh_token")
 public class RefreshTokenDO {
 
     @TableId(type = IdType.INPUT)

@@ -35,6 +35,7 @@
 ## 4. 数据库约束
 
 - 每个服务独占数据库或 schema，其他服务只能通过 API/事件访问数据。
+- 独立 schema 已承担业务命名空间，物理表名不再添加 `mk_`、`lr_`、`pt_`、`iam_` 等服务缩写前缀；表名使用小写下划线并表达完整业务对象，如 `group_order`、`video_progress`、`point_account`、`user_account`。
 - 表使用业务无关主键，并为业务幂等键建立唯一索引。
 - 状态字段使用受控枚举；金额、数量、版本号不得为 null。
 - 结构变更使用版本化迁移脚本，禁止依赖应用启动自动改表。
@@ -43,7 +44,10 @@
 
 ## 5. Redis 与分布式锁
 
-- Key 格式：`kw:{service}:{purpose}:{businessKey}`，必须设置合理 TTL，永久 Key 需文档说明。
+- Key 格式：`kw:{service}:{domain}:{resource}:{businessIdentifiers}`；固定前缀由所属业务域的 Key 工厂统一生成，禁止在业务代码中散落字符串拼接。
+- Key 只使用小写英文层级和受校验的业务 ID，不写入手机号、邮箱、令牌等敏感信息；结构不兼容时增加版本段。
+- 必须为 Key 记录 Redis 类型、Value/Member 格式、TTL 和清理策略；永久 Key 必须在设计文档中说明。
+- Lua 同时操作多个 Key 时必须使用 Redis Cluster Hash Tag 保证同槽，或在 ADR 中明确仅支持单机 Redis。
 - Redis 用于加速、短期占位和协调，不作为订单、权益等唯一事实源。
 - 分布式锁必须包含唯一持有者标识，并只释放自己的锁。
 - 锁的租约、等待时间、失败行为和临界区必须明确；持锁期间禁止慢速远程调用。
@@ -60,7 +64,7 @@
 
 ## 7. 并发与幂等
 
-- 拼团参与的幂等键：`activityId + userId + clientRequestId`。
+- 拼团参与的幂等键：`groupId + userId`；同一用户对同一团终身只能产生一条参与记录和一张交易订单。
 - 支付通知的幂等键：支付渠道流水号；订单状态采用合法状态迁移与条件更新。
 - 权益发放唯一键：`sourceType + sourceId + userId + courseId`。
 - 所有线程池使用有界队列、业务命名、明确拒绝策略和监控；禁止直接使用公共线程池执行核心任务。
