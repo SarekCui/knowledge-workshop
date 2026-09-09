@@ -17,8 +17,12 @@
 
 | 服务 | 方法 | 路径 | 幂等键/查询边界 |
 |---|---|---|---|
+| marketing | GET | `/api/marketing/activities`、`/{activityId}`、`/{activityId}/groups`、`/groups/{groupId}` | 仅查询当前可参与的活动及有效团实例，分页上限 100 |
 | marketing | POST | `/api/marketing/groups/{groupId}/join` | JWT `sub` + `groupId`；无请求体 |
+| marketing | GET | `/api/marketing/orders`、`/{orderId}` | 仅返回 JWT 当前用户的订单，支持状态筛选与分页 |
 | marketing | POST | `/api/marketing/orders/{orderId}/pay` | `paymentTradeNo` |
+| marketing | GET/POST/PUT/PATCH | `/api/marketing/admin/activities/**` | 仅 `ADMIN`；创建以调用方提供的资源 ID 幂等，修改使用 `version` |
+| marketing | GET/POST | `/api/marketing/admin/notification-tasks/**` | 仅 `ADMIN`；查询异常任务，人工重试只把 `RETRY/DEAD` 任务重新排入调度 |
 | points | POST | `/api/points/sign-ins` | JWT `sub` + UTC 日期；请求体不接收用户 ID |
 | points | GET | `/api/points/leaderboard` | `limit` 限制为 1—1000 |
 | learning | GET | `/api/learning/courses`、`/{courseId}`、`/{courseId}/chapters` | 只返回已发布内容 |

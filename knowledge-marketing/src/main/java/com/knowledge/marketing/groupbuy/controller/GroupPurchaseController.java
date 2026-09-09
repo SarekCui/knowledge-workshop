@@ -3,12 +3,12 @@ package com.knowledge.marketing.groupbuy.controller;
 import com.knowledge.api.common.Result;
 import com.knowledge.common.exception.RequestIdFilter;
 import com.knowledge.marketing.groupbuy.bo.JoinGroupBO;
-import com.knowledge.marketing.groupbuy.bo.GroupOrderBO;
-import com.knowledge.marketing.groupbuy.converter.GroupOrderConverter;
+import com.knowledge.marketing.groupbuy.bo.TradeOrderBO;
+import com.knowledge.marketing.groupbuy.converter.GroupBuyConverter;
 import com.knowledge.marketing.groupbuy.dto.PaymentDTO;
 import com.knowledge.marketing.groupbuy.service.GroupPurchaseService;
 import com.knowledge.marketing.groupbuy.service.PaymentSettlementService;
-import com.knowledge.marketing.groupbuy.vo.GroupOrderVO;
+import com.knowledge.marketing.groupbuy.vo.TradeOrderVO;
 import com.knowledge.security.context.UserContext;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -37,25 +37,25 @@ public class GroupPurchaseController {
 
     @PostMapping("/groups/{groupId}/join")
     @Operation(summary = "参加拼团", description = "同一用户重复加入同一团时返回已有订单")
-    public Result<GroupOrderVO> join(
+    public Result<TradeOrderVO> join(
                                      @Parameter(description = "团实例 ID", example = "group-demo", required = true)
                                      @PathVariable String groupId,
                                      @Parameter(hidden = true) HttpServletRequest servletRequest) {
-        return Result.ok(GroupOrderConverter.toVO(
+        return Result.ok(GroupBuyConverter.toVO(
                 purchaseService.join(new JoinGroupBO(groupId, UserContext.getUserId()))),
                 requestId(servletRequest));
     }
 
     @PostMapping("/orders/{orderId}/pay")
     @Operation(summary = "支付拼团订单", description = "使用支付流水号完成模拟支付；重复流水安全返回既有结果")
-    public Result<GroupOrderVO> pay(
+    public Result<TradeOrderVO> pay(
             @Parameter(description = "订单 ID", example = "order-001", required = true)
             @PathVariable String orderId,
             @Valid @RequestBody PaymentDTO request,
             @Parameter(hidden = true) HttpServletRequest servletRequest) {
-        GroupOrderBO paid = settlementService.settle(
+        TradeOrderBO paid = settlementService.settle(
                 orderId, request.paymentTradeNo(), UserContext.getUserId());
-        return Result.ok(GroupOrderConverter.toVO(paid), requestId(servletRequest));
+        return Result.ok(GroupBuyConverter.toVO(paid), requestId(servletRequest));
     }
 
     private String requestId(HttpServletRequest request) {

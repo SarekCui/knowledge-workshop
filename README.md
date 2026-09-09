@@ -9,12 +9,12 @@
 - `distributed-lock-spring-boot-starter`：AOP + Redisson 注解锁，支持可重入、公平、读写锁和有序多重锁。
 - `knowledge-security`：项目内部安全模块，为 Servlet 服务提供 JWT 验签、角色映射及 401/403 响应。
 - `knowledge-iam`：用户身份、BCrypt 密码校验、短期 JWT、刷新令牌轮换/复用检测、注销撤销及 OpenAPI 契约。
-- `knowledge-marketing`：责任链校验、Redis Lua 原子占位/回补、本地事务订单与成团、可靠通知任务和定时补偿。
+- `knowledge-marketing`：责任链校验、Redis Lua 原子占位/回补、本地事务订单与成团、可靠通知任务和定时补偿，并提供用户查询与管理员运营接口。
 - `knowledge-points`：Bitmap 签到、RabbitMQ 异步积分、季度物理分表、赛季账户与 ZSet 排名、XXL-JOB 快照/归档处理器。
 - `knowledge-learning`：课程与章节、Note、课程权益，以及支持多设备乱序保护和 Redis 恢复的视频学习进度。
 - `knowledge-gateway`：基于 Nacos 服务发现和 Spring Cloud LoadBalancer 的动态路由与 JWT 校验，并提供超时、独立熔断、并发隔离、GET 有限重试和统一降级。
 
-目前 32 个单元测试和 25 个集成验收场景通过。验收覆盖 BCrypt 登录与 JWT 签发、刷新令牌哈希存储、轮换、复用检测和幂等注销、网关与业务服务双层验签、JWT 用户身份落库、订单所有权、IAM/营销/积分/学习 OpenAPI 契约、100 个并发请求竞争 10 个拼团名额、事务失败名额回补、通知失败重试、成团权益幂等发放、Note 所有权与乐观锁、视频进度重复/乱序/多设备处理、Redis 进度恢复、RabbitMQ 死信留存、Redis 榜单重建、赛季任务幂等，以及网关超时、熔断、并发隔离、读请求有限重试和写请求不重试。该结果是正确性验收，不是持续性能压测，因此 README 不宣称已达到某个 RPS 或生产容量。
+目前 36 个单元测试和 28 个集成验收场景通过。验收覆盖 BCrypt 登录与 JWT 签发、刷新令牌哈希存储、轮换、复用检测和幂等注销、网关与业务服务双层验签、JWT 用户身份落库、订单所有权、拼团查询与运营权限、IAM/营销/积分/学习 OpenAPI 契约、100 个并发请求竞争 10 个拼团名额、事务失败名额回补、通知失败重试与人工重试、成团权益幂等发放、Note 所有权与乐观锁、视频进度重复/乱序/多设备处理、Redis 进度恢复、RabbitMQ 死信留存、Redis 榜单重建、赛季任务幂等，以及网关超时、熔断、并发隔离、读请求有限重试和写请求不重试。该结果是正确性验收，不是持续性能压测，因此 README 不宣称已达到某个 RPS 或生产容量。
 
 IAM、营销、积分和网关统一输出 Logstash JSON 日志；HTTP 完成日志包含服务名、请求 ID、方法、路径、状态码和耗时，不记录请求体、查询参数与认证凭证。
 
@@ -41,6 +41,7 @@ IAM、营销、积分和网关统一输出 Logstash JSON 日志；HTTP 完成日
 - [第 4.5 轮网关同步调用容错验收记录](docs/acceptance/round-4.5-gateway-resilience.md)
 - [第 4.6 轮结构化日志验收记录](docs/acceptance/round-4.6-structured-logging.md)
 - [第 5.1 轮学习主线验收记录](docs/acceptance/round-5.1-learning-core.md)
+- [第 5.2 轮营销查询与运营验收记录](docs/acceptance/round-5.2-marketing-operations.md)
 - [架构决策记录](docs/adr/README.md)
 
 ## 技术栈

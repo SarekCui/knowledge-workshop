@@ -27,7 +27,7 @@ public class MarketingOpenApiConfiguration {
                         .in("header")
                         .name("X-Request-Id")
                         .required(false)
-                        .description("可选请求追踪 ID；缺失、空白或超过 128 字符时由服务端生成")
+                        .description("可选请求追踪 ID；缺失、空白或超过 64 字符时由服务端生成")
                         .example("request-20260903-001"))));
     }
 }
