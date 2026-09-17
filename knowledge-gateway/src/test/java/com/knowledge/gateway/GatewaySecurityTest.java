@@ -47,6 +47,17 @@ class GatewaySecurityTest {
     }
 
     @Test
+    void publicDiscoveryRoutesPassAuthenticationBoundaryWithoutToken() {
+        for (String path : new String[]{
+                "/api/learning/notes/public?pageNo=1&pageSize=20",
+                "/api/learning/catalog/categories",
+                "/api/iam/users/public?userIds=user-demo"}) {
+            webTestClient.get().uri(path).exchange()
+                    .expectStatus().value(status -> assertThat(status).isNotEqualTo(401));
+        }
+    }
+
+    @Test
     void rejectsDirectAccessToInternalFallback() {
         webTestClient.get()
                 .uri("/internal/gateway/fallback/points")

@@ -6,7 +6,7 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.autoconfigure.security.servlet.UserDetailsServiceAutoConfiguration;
 
 @SpringBootApplication(exclude = UserDetailsServiceAutoConfiguration.class)
-@MapperScan("com.knowledge.iam.identity.dao.mapper")
+@MapperScan({"com.knowledge.iam.identity.dao.mapper", "com.knowledge.iam.profile.dao.mapper"})
 public class IamApplication {
 
     public static void main(String[] args) {

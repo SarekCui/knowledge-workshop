@@ -13,6 +13,10 @@ import org.springframework.boot.test.web.client.TestRestTemplate;
 import org.springframework.boot.test.web.server.LocalServerPort;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.HttpEntity;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpMethod;
+import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.context.DynamicPropertyRegistry;
@@ -38,6 +42,7 @@ class IamAcceptanceIT {
         registry.add("spring.datasource.password", MYSQL::getPassword);
         registry.add("spring.cloud.nacos.discovery.enabled", () -> "false");
         registry.add("knowledge.security.jwt.secret", () -> "local-test-secret-at-least-32-bytes-long");
+        registry.add("knowledge.storage.enabled", () -> "false");
     }
 
     @LocalServerPort
@@ -55,6 +60,7 @@ class IamAcceptanceIT {
     @BeforeEach
     void seedUser() {
         jdbcTemplate.update("DELETE FROM refresh_token");
+        jdbcTemplate.update("DELETE FROM user_profile");
         jdbcTemplate.update("DELETE FROM user_role");
         jdbcTemplate.update("DELETE FROM access_role");
         jdbcTemplate.update("DELETE FROM user_account");
@@ -62,6 +68,10 @@ class IamAcceptanceIT {
                         + "(id, username, password_hash, status, created_at, updated_at) "
                         + "VALUES (?, ?, ?, 'ENABLED', UTC_TIMESTAMP(3), UTC_TIMESTAMP(3))",
                 "user-demo", "demo", passwordEncoder.encode("Knowledge@123"));
+        jdbcTemplate.update("INSERT INTO user_profile "
+                        + "(user_id, nickname, avatar_object_key, bio, version, created_at, updated_at) "
+                        + "VALUES (?, ?, NULL, NULL, 0, UTC_TIMESTAMP(3), UTC_TIMESTAMP(3))",
+                "user-demo", "demo");
         jdbcTemplate.update("INSERT INTO access_role "
                         + "(id, code, name, status, created_at, updated_at) "
                         + "VALUES ('role-learner', 'LEARNER', '学习者', 'ENABLED', UTC_TIMESTAMP(3), UTC_TIMESTAMP(3))");
@@ -85,6 +95,49 @@ class IamAcceptanceIT {
         assertThat(jdbcTemplate.queryForObject(
                 "SELECT COUNT(*) FROM refresh_token WHERE token_hash = ?",
                 Integer.class, data.get("refreshToken"))).isZero();
+    }
+
+    @Test
+    void browserCookieRotatesAndLogoutPreventsRecoveryWithoutExposingRefreshToken() {
+        ResponseEntity<Map> login = webRequest("login", new LoginDTO("demo", "Knowledge@123"), null);
+        assertThat(login.getStatusCode()).isEqualTo(HttpStatus.OK);
+        Map<?, ?> data = (Map<?, ?>) login.getBody().get("data");
+        assertThat(data.containsKey("refreshToken")).isFalse();
+        String originalCookie = login.getHeaders().getFirst(HttpHeaders.SET_COOKIE);
+        assertThat(originalCookie).contains("HttpOnly", "Secure", "SameSite=Strict", "Path=/api/iam/web/auth");
+        assertThat(login.getHeaders().getCacheControl()).isEqualTo("no-store");
+        ResponseEntity<Map> refreshed = webRequest("refresh", Map.of(), originalCookie.split(";", 2)[0]);
+        assertThat(refreshed.getStatusCode()).isEqualTo(HttpStatus.OK);
+        String nextCookie = refreshed.getHeaders().getFirst(HttpHeaders.SET_COOKIE).split(";", 2)[0];
+        assertThat(nextCookie).isNotEqualTo(originalCookie.split(";", 2)[0]);
+        ResponseEntity<Map> logout = webRequest("logout", Map.of(), nextCookie);
+        assertThat(logout.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(logout.getHeaders().getFirst(HttpHeaders.SET_COOKIE)).contains("Max-Age=0");
+        assertThat(webRequest("refresh", Map.of(), nextCookie).getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
+    }
+
+    @Test
+    void browserAuthenticationRejectsUntrustedOriginAndMissingDedicatedHeader() {
+        HttpHeaders headers = new HttpHeaders();
+        headers.setOrigin("https://untrusted.example");
+        headers.set("X-Web-Auth", "1");
+        ResponseEntity<Map> untrusted = restTemplate.exchange("http://localhost:" + port + "/api/iam/web/auth/login",
+                HttpMethod.POST, new HttpEntity<>(new LoginDTO("demo", "Knowledge@123"), headers), Map.class);
+        assertThat(untrusted.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
+        headers.setOrigin("http://127.0.0.1:5173");
+        headers.remove("X-Web-Auth");
+        ResponseEntity<Map> noHeader = restTemplate.exchange("http://localhost:" + port + "/api/iam/web/auth/refresh",
+                HttpMethod.POST, new HttpEntity<>(Map.of(), headers), Map.class);
+        assertThat(noHeader.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
+    }
+
+    private ResponseEntity<Map> webRequest(String action, Object body, String cookie) {
+        HttpHeaders headers = new HttpHeaders();
+        headers.setOrigin("http://127.0.0.1:5173");
+        headers.set("X-Web-Auth", "1");
+        if (cookie != null) headers.set(HttpHeaders.COOKIE, cookie);
+        return restTemplate.exchange("http://localhost:" + port + "/api/iam/web/auth/" + action,
+                HttpMethod.POST, new HttpEntity<>(body, headers), Map.class);
     }
 
     @Test
@@ -154,6 +207,39 @@ class IamAcceptanceIT {
                 .contains("LoginDTO")
                 .contains("RefreshTokenDTO")
                 .contains("TokenPairVO");
+    }
+
+    @Test
+    void readsUpdatesAndPublishesCurrentUserProfile() {
+        String accessToken = loginData().get("accessToken").toString();
+        HttpHeaders headers = new HttpHeaders();
+        headers.setBearerAuth(accessToken);
+
+        ResponseEntity<Map> initial = restTemplate.exchange("http://localhost:" + port + "/api/iam/profile",
+                HttpMethod.GET, new HttpEntity<>(headers), Map.class);
+        assertThat(initial.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(((Map<?, ?>) initial.getBody().get("data")).get("nickname")).isEqualTo("demo");
+
+        headers.setContentType(MediaType.APPLICATION_JSON);
+        Map<String, Object> update = Map.of("nickname", "海边学习者", "bio", "持续学习", "version", 0);
+        ResponseEntity<Map> updated = restTemplate.exchange("http://localhost:" + port + "/api/iam/profile",
+                HttpMethod.PUT, new HttpEntity<>(update, headers), Map.class);
+        assertThat(updated.getStatusCode()).isEqualTo(HttpStatus.OK);
+        Map<?, ?> profile = (Map<?, ?>) updated.getBody().get("data");
+        assertThat(profile.get("nickname")).isEqualTo("海边学习者");
+        assertThat(profile.get("bio")).isEqualTo("持续学习");
+        assertThat(profile.get("version")).isEqualTo(1);
+
+        ResponseEntity<Map> stale = restTemplate.exchange("http://localhost:" + port + "/api/iam/profile",
+                HttpMethod.PUT, new HttpEntity<>(update, headers), Map.class);
+        assertThat(stale.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
+
+        ResponseEntity<Map> published = restTemplate.exchange(
+                "http://localhost:" + port + "/api/iam/users/public?userIds=user-demo",
+                HttpMethod.GET, HttpEntity.EMPTY, Map.class);
+        assertThat(published.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(((Map<?, ?>) ((java.util.List<?>) published.getBody().get("data")).get(0)).get("nickname"))
+                .isEqualTo("海边学习者");
     }
 
     private Map<?, ?> loginData() {

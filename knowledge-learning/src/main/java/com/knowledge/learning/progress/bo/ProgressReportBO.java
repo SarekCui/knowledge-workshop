@@ -5,5 +5,6 @@ public record ProgressReportBO(
         long sessionEpoch,
         long sequence,
         long resumePositionMs,
-        boolean accepted) {
+        boolean accepted,
+        boolean cacheUpdated) {
 }

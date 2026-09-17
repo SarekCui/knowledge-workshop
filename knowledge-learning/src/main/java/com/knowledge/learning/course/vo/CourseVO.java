@@ -4,6 +4,7 @@ import java.time.LocalDateTime;
 
 public record CourseVO(
         String id,
+        String categoryId,
         String title,
         String summary,
         String coverUrl,

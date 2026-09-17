@@ -13,7 +13,7 @@ public final class CourseConverter {
     }
 
     public static CourseBO toBO(CourseDO source) {
-        return new CourseBO(source.getId(), source.getTitle(), source.getSummary(), source.getCoverUrl(),
+        return new CourseBO(source.getId(), source.getCategoryId(), source.getTitle(), source.getSummary(), source.getCoverUrl(),
                 source.getPriceCents(), source.getStatus(), source.getVersion(), source.getUpdatedAt());
     }
 
@@ -24,7 +24,7 @@ public final class CourseConverter {
     }
 
     public static CourseVO toVO(CourseBO source) {
-        return new CourseVO(source.id(), source.title(), source.summary(), source.coverUrl(), source.priceCents(),
+        return new CourseVO(source.id(), source.categoryId(), source.title(), source.summary(), source.coverUrl(), source.priceCents(),
                 source.status().name(), source.version(), source.updatedAt());
     }
 

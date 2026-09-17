@@ -6,8 +6,10 @@ import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.context.annotation.Import;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
+import org.springframework.scheduling.annotation.EnableScheduling;
 
 @EnableMethodSecurity
+@EnableScheduling
 @Import(ResourceServerConfiguration.class)
 @MapperScan({
         "com.knowledge.learning.course.dao.mapper",

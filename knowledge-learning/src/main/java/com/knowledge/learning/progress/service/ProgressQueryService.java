@@ -10,42 +10,52 @@ import com.knowledge.learning.progress.dao.mapper.VideoProgressMapper;
 import com.knowledge.learning.progress.dao.model.VideoProgressDO;
 import com.knowledge.learning.progress.enums.ProgressStatus;
 import java.time.Clock;
+import java.time.DateTimeException;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 import org.springframework.stereotype.Service;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.dao.DataAccessException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 @Service
 public class ProgressQueryService {
 
-    private final VideoProgressMapper progressMapper;
-    private final ProgressCacheService cacheService;
-    private final CourseQueryService courseQueryService;
-    private final EntitlementService entitlementService;
-    private final Clock clock;
-
-    public ProgressQueryService(VideoProgressMapper progressMapper, ProgressCacheService cacheService,
-                                CourseQueryService courseQueryService, EntitlementService entitlementService,
-                                Clock clock) {
-        this.progressMapper = progressMapper;
-        this.cacheService = cacheService;
-        this.courseQueryService = courseQueryService;
-        this.entitlementService = entitlementService;
-        this.clock = clock;
-    }
+    private static final Logger LOGGER = LoggerFactory.getLogger(ProgressQueryService.class);
+    @Autowired
+    private VideoProgressMapper progressMapper;
+    @Autowired
+    private ProgressCacheService cacheService;
+    @Autowired
+    private CourseQueryService courseQueryService;
+    @Autowired
+    private EntitlementService entitlementService;
+    @Autowired
+    private Clock clock;
 
     public VideoProgressBO get(String userId, String videoId) {
         ChapterBO chapter = courseQueryService.requirePublishedVideo(videoId);
         entitlementService.requireActive(userId, chapter.courseId());
-        VideoProgressBO cached = cacheService.get(userId, videoId, chapter.videoVersion());
+        VideoProgressBO cached = null;
+        try {
+            cached = cacheService.get(userId, videoId, chapter.videoVersion());
+        } catch (DataAccessException | IllegalArgumentException | DateTimeException cacheFailure) {
+            LOGGER.warn("event=progress_cache_read_failed videoId={} message=断点读取回源数据库", videoId, cacheFailure);
+        }
         if (cached != null) {
             return cached;
         }
         VideoProgressDO stored = progressMapper.findOne(userId, videoId, chapter.videoVersion());
         if (stored != null) {
             VideoProgressBO progress = ProgressConverter.toBO(stored);
-            cacheService.put(userId, progress);
+            try {
+                cacheService.put(userId, progress);
+            } catch (DataAccessException cacheFailure) {
+                LOGGER.warn("event=progress_cache_fill_failed videoId={} message=缓存回填失败，返回已落库断点", videoId, cacheFailure);
+            }
             return progress;
         }
         return new VideoProgressBO(chapter.courseId(), chapter.id(), chapter.videoId(), chapter.videoVersion(),
@@ -54,7 +64,18 @@ public class ProgressQueryService {
     }
 
     public List<VideoProgressBO> recent(String userId, int limit) {
-        Set<String> members = cacheService.recentMembers(userId, Math.min(Math.max(limit, 1), 50));
+        int boundedLimit = Math.min(Math.max(limit, 1), 50);
+        Set<String> members;
+        try {
+            members = cacheService.recentMembers(userId, boundedLimit);
+        } catch (DataAccessException cacheFailure) {
+            LOGGER.warn("event=recent_progress_cache_failed message=最近学习列表回源数据库", cacheFailure);
+            members = null;
+        }
+        if (members == null || members.isEmpty()) {
+            return progressMapper.findRecentAvailable(userId, LocalDateTime.now(clock), boundedLimit).stream()
+                    .map(ProgressConverter::toBO).toList();
+        }
         List<VideoProgressBO> result = new ArrayList<>();
         for (String member : members) {
             int separator = member.lastIndexOf(':');

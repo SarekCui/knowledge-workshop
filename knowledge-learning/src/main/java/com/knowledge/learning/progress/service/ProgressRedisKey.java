@@ -12,11 +12,11 @@ final class ProgressRedisKey {
     }
 
     static String session(String userId, String videoId) {
-        return PREFIX + "session:" + userId + ':' + videoId;
+        return PREFIX + "session:v2:{" + userId + ':' + videoId + '}';
     }
 
     static String sessionEpoch(String userId, String videoId) {
-        return PREFIX + "session-epoch:" + userId + ':' + videoId;
+        return PREFIX + "session-epoch:v2:{" + userId + ':' + videoId + '}';
     }
 
     static String recent(String userId) {

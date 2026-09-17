@@ -13,6 +13,7 @@ import lombok.Setter;
 public class CourseDO {
     @TableId
     private String id;
+    private String categoryId;
     private String title;
     private String summary;
     private String coverUrl;

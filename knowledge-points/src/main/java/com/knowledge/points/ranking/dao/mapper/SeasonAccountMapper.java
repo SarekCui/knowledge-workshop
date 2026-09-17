@@ -1,12 +1,16 @@
 package com.knowledge.points.ranking.dao.mapper;
 
 import com.knowledge.points.ranking.dao.model.SeasonAccountDO;
+import com.knowledge.points.ranking.bo.UserPointTotalBO;
+import java.util.List;
 import java.time.LocalDateTime;
 import org.apache.ibatis.annotations.Insert;
 import org.apache.ibatis.annotations.Param;
 import org.apache.ibatis.annotations.Select;
 
 public interface SeasonAccountMapper {
+    @Select("SELECT user_id, points FROM season_account WHERE season = #{season} ORDER BY points DESC, user_id ASC LIMIT 1000")
+    List<UserPointTotalBO> topForSettlement(@Param("season") String season);
 
     @Insert("""
             INSERT INTO season_account(season, user_id, points, version, updated_at)

@@ -18,6 +18,10 @@ public final class UserContext {
         return getJwt().getSubject();
     }
 
+    public static String getUserIdOrNull() {
+        return isAuthenticated() ? getJwt().getSubject() : null;
+    }
+
     public static String getUsername() {
         return getJwt().getClaimAsString("username");
     }

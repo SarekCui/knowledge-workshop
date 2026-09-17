@@ -7,25 +7,32 @@ import com.knowledge.points.ranking.config.PointsRabbitConfiguration;
 import java.io.IOException;
 import org.springframework.amqp.rabbit.annotation.RabbitListener;
 import org.springframework.stereotype.Service;
+import org.springframework.beans.factory.annotation.Autowired;
+import com.knowledge.points.season.service.SeasonClosedException;
 
 @Service
 public class PointGrantConsumer {
 
-    private final ObjectMapper objectMapper;
-    private final PointGrantTransactionService transactionService;
-    private final LeaderboardService leaderboardService;
-
-    public PointGrantConsumer(ObjectMapper objectMapper, PointGrantTransactionService transactionService,
-                              LeaderboardService leaderboardService) {
-        this.objectMapper = objectMapper;
-        this.transactionService = transactionService;
-        this.leaderboardService = leaderboardService;
-    }
+    @Autowired
+    private ObjectMapper objectMapper;
+    @Autowired
+    private PointGrantTransactionService transactionService;
+    @Autowired
+    private LeaderboardService leaderboardService;
+    @Autowired
+    private RejectedPointEventService rejectedEventService;
 
     @RabbitListener(queues = PointsRabbitConfiguration.POINT_GRANT_QUEUE)
     public void consume(String payload) throws IOException {
         PointGrantEventDTO event = objectMapper.readValue(payload, PointGrantEventDTO.class);
-        PointGrantResultBO result = transactionService.grant(event);
+        PointGrantResultBO result;
+        try {
+            result = transactionService.grant(event);
+        } catch (SeasonClosedException exception) {
+            // 持久化成功后才正常返回供 RabbitMQ ACK；保存失败仍抛出异常重试。
+            rejectedEventService.retain(event.eventId(), payload, exception.getMessage());
+            return;
+        }
         if (result == null) {
             throw new IllegalStateException("积分事件已存在，但赛季账户不存在: " + event.eventId());
         }

@@ -12,18 +12,16 @@ import com.knowledge.learning.course.dao.model.CourseDO;
 import com.knowledge.learning.course.enums.ChapterStatus;
 import com.knowledge.learning.course.enums.CourseStatus;
 import java.util.List;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 @Service
 public class CourseQueryService {
 
-    private final CourseMapper courseMapper;
-    private final ChapterMapper chapterMapper;
-
-    public CourseQueryService(CourseMapper courseMapper, ChapterMapper chapterMapper) {
-        this.courseMapper = courseMapper;
-        this.chapterMapper = chapterMapper;
-    }
+    @Autowired
+    private CourseMapper courseMapper;
+    @Autowired
+    private ChapterMapper chapterMapper;
 
     public List<CourseBO> listPublished() {
         return courseMapper.selectList(Wrappers.<CourseDO>lambdaQuery()

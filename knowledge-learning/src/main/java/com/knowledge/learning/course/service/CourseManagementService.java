@@ -6,8 +6,10 @@ import com.knowledge.learning.course.bo.ChapterBO;
 import com.knowledge.learning.course.bo.CourseBO;
 import com.knowledge.learning.course.converter.CourseConverter;
 import com.knowledge.learning.course.dao.mapper.ChapterMapper;
+import com.knowledge.learning.course.dao.mapper.CourseCategoryMapper;
 import com.knowledge.learning.course.dao.mapper.CourseMapper;
 import com.knowledge.learning.course.dao.model.ChapterDO;
+import com.knowledge.learning.course.dao.model.CourseCategoryDO;
 import com.knowledge.learning.course.dao.model.CourseDO;
 import com.knowledge.learning.course.dto.ChangeCourseStatusDTO;
 import com.knowledge.learning.course.dto.CreateChapterDTO;
@@ -15,41 +17,41 @@ import com.knowledge.learning.course.dto.CreateCourseDTO;
 import com.knowledge.learning.course.dto.UpdateChapterDTO;
 import com.knowledge.learning.course.dto.UpdateCourseDTO;
 import com.knowledge.learning.course.enums.ChapterStatus;
+import com.knowledge.learning.course.enums.CourseCategoryStatus;
 import com.knowledge.learning.course.enums.CourseStatus;
 import com.knowledge.learning.note.service.NoteService;
 import com.knowledge.learning.progress.service.ProgressQueryService;
 import java.time.Clock;
 import java.time.LocalDateTime;
 import java.util.UUID;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class CourseManagementService {
 
-    private final CourseMapper courseMapper;
-    private final ChapterMapper chapterMapper;
-    private final CourseQueryService queryService;
-    private final NoteService noteService;
-    private final ProgressQueryService progressQueryService;
-    private final Clock clock;
-
-    public CourseManagementService(CourseMapper courseMapper, ChapterMapper chapterMapper,
-                                   CourseQueryService queryService, NoteService noteService,
-                                   ProgressQueryService progressQueryService, Clock clock) {
-        this.courseMapper = courseMapper;
-        this.chapterMapper = chapterMapper;
-        this.queryService = queryService;
-        this.noteService = noteService;
-        this.progressQueryService = progressQueryService;
-        this.clock = clock;
-    }
+    @Autowired
+    private CourseMapper courseMapper;
+    @Autowired
+    private CourseCategoryMapper courseCategoryMapper;
+    @Autowired
+    private ChapterMapper chapterMapper;
+    @Autowired
+    private CourseQueryService queryService;
+    @Autowired
+    private NoteService noteService;
+    @Autowired
+    private ProgressQueryService progressQueryService;
+    @Autowired
+    private Clock clock;
 
     @Transactional
     public CourseBO createCourse(CreateCourseDTO request) {
         LocalDateTime now = LocalDateTime.now(clock);
         CourseDO course = new CourseDO();
         course.setId(UUID.randomUUID().toString());
+        course.setCategoryId(resolveCategoryId(request.categoryId()));
         course.setTitle(request.title().trim());
         course.setSummary(request.summary().trim());
         course.setCoverUrl(normalizeNullable(request.coverUrl()));
@@ -65,7 +67,8 @@ public class CourseManagementService {
     @Transactional
     public CourseBO updateCourse(String courseId, UpdateCourseDTO request) {
         queryService.getForManagement(courseId);
-        int changed = courseMapper.updateDetails(courseId, request.title().trim(), request.summary().trim(),
+        int changed = courseMapper.updateDetails(courseId, resolveCategoryId(request.categoryId()),
+                request.title().trim(), request.summary().trim(),
                 normalizeNullable(request.coverUrl()), request.priceCents(), request.version(), LocalDateTime.now(clock));
         if (changed != 1) {
             throw BusinessException.conflict("课程已被其他请求修改，请刷新后重试");
@@ -145,5 +148,14 @@ public class CourseManagementService {
 
     private String normalizeNullable(String value) {
         return value == null || value.isBlank() ? null : value.trim();
+    }
+
+    private String resolveCategoryId(String categoryId) {
+        String normalized = categoryId == null || categoryId.isBlank() ? "general" : categoryId.trim();
+        CourseCategoryDO category = courseCategoryMapper.selectById(normalized);
+        if (category == null || category.getStatus() != CourseCategoryStatus.ACTIVE) {
+            throw BusinessException.badRequest("课程分类不存在或不可用");
+        }
+        return normalized;
     }
 }

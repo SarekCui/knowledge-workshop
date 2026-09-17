@@ -17,15 +17,21 @@ spring:
     password: ${LEARNING_DB_PASSWORD:root}
   data:
     redis:
+      connect-timeout: 1s
+      timeout: 1s
       host: ${REDIS_HOST:localhost}
       port: ${REDIS_PORT:6380}
       password: ${REDIS_PASSWORD:}
   rabbitmq:
+    connection-timeout: 5s
     host: ${RABBITMQ_HOST:localhost}
     port: ${RABBITMQ_PORT:5672}
     username: ${RABBITMQ_USERNAME:knowledge}
     password: ${RABBITMQ_PASSWORD:knowledge}
     publisher-confirm-type: correlated
+    publisher-returns: true
+    template:
+      mandatory: true
     listener:
       simple:
         acknowledge-mode: auto
@@ -38,6 +44,10 @@ spring:
           max-interval: 10s
   flyway:
     enabled: true
+  servlet:
+    multipart:
+      max-file-size: 5MB
+      max-request-size: 6MB
 
 mybatis-plus:
   configuration:
@@ -54,6 +64,15 @@ springdoc:
   paths-to-match: /api/learning/**
 
 knowledge:
+  storage:
+    enabled: ${OBJECT_STORAGE_ENABLED:true}
+    endpoint: ${OBJECT_STORAGE_ENDPOINT:http://127.0.0.1:9000}
+    access-key: ${OBJECT_STORAGE_ACCESS_KEY:knowledge}
+    secret-key: ${OBJECT_STORAGE_SECRET_KEY:knowledge-secret}
+    bucket: ${NOTE_OBJECT_STORAGE_BUCKET:knowledge-note}
+  learning:
+    note-image:
+      cleanup-delay: ${NOTE_IMAGE_CLEANUP_DELAY:1h}
   security:
     jwt:
       secret: ${JWT_SECRET}

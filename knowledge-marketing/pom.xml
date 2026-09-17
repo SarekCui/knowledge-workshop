@@ -10,7 +10,7 @@
     <dependencies>
         <dependency><groupId>com.knowledge</groupId><artifactId>knowledge-common</artifactId><version>${project.version}</version></dependency>
         <dependency><groupId>com.knowledge</groupId><artifactId>knowledge-api</artifactId><version>${project.version}</version></dependency>
-        <dependency><groupId>com.knowledge</groupId><artifactId>distributed-lock-spring-boot-starter</artifactId><version>${project.version}</version></dependency>
+        <dependency><groupId>com.knowledge</groupId><artifactId>knowledge-lock-spring-boot-starter</artifactId><version>${project.version}</version></dependency>
         <dependency><groupId>com.knowledge</groupId><artifactId>knowledge-security</artifactId><version>${project.version}</version></dependency>
         <dependency><groupId>org.springframework.boot</groupId><artifactId>spring-boot-starter-web</artifactId></dependency>
         <dependency><groupId>org.springdoc</groupId><artifactId>springdoc-openapi-starter-webmvc-ui</artifactId></dependency>

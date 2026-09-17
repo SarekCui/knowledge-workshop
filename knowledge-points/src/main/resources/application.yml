@@ -44,7 +44,7 @@ springdoc:
     path: /swagger-ui.html
     operations-sorter: method
     tags-sorter: alpha
-  packages-to-scan: com.knowledge.points.signin.controller,com.knowledge.points.ranking.controller
+  packages-to-scan: com.knowledge.points.signin.controller,com.knowledge.points.ranking.controller,com.knowledge.points.season.controller
   paths-to-match: /api/points/**
 
 knowledge:

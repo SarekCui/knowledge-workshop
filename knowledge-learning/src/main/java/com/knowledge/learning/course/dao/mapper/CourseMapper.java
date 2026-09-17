@@ -10,11 +10,12 @@ public interface CourseMapper extends BaseMapper<CourseDO> {
 
     @Update("""
             UPDATE course
-               SET title = #{title}, summary = #{summary}, cover_url = #{coverUrl},
+               SET category_id = #{categoryId}, title = #{title}, summary = #{summary}, cover_url = #{coverUrl},
                    price_cents = #{priceCents}, version = version + 1, updated_at = #{updatedAt}
              WHERE id = #{id} AND version = #{version}
             """)
-    int updateDetails(@Param("id") String id, @Param("title") String title,
+    int updateDetails(@Param("id") String id, @Param("categoryId") String categoryId,
+                      @Param("title") String title,
                       @Param("summary") String summary, @Param("coverUrl") String coverUrl,
                       @Param("priceCents") long priceCents, @Param("version") int version,
                       @Param("updatedAt") LocalDateTime updatedAt);
