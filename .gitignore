@@ -8,3 +8,6 @@ target/
 .env
 data/
 logs/
+node_modules/
+dist/
+.vite/

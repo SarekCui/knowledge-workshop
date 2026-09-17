@@ -3,11 +3,13 @@
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
     <parent>
-        <groupId>com.knowledge</groupId><artifactId>knowledge-workshop</artifactId>
+        <groupId>com.knowledge</groupId>
+        <artifactId>knowledge-components</artifactId>
         <version>0.1.0-SNAPSHOT</version>
+        <relativePath>../pom.xml</relativePath>
     </parent>
-    <artifactId>distributed-lock-spring-boot-starter</artifactId>
-    <name>distributed-lock-spring-boot-starter</name>
+    <artifactId>knowledge-lock-spring-boot-starter</artifactId>
+    <name>knowledge-lock-spring-boot-starter</name>
     <description>基于 Spring AOP 与 Redisson 的声明式分布式锁组件</description>
     <dependencies>
         <dependency>

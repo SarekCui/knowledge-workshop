@@ -2,7 +2,7 @@
 
 ## 1. 模块定位
 
-模块名为 `distributed-lock-spring-boot-starter`，提供基于 Spring AOP 与 Redisson 的声明式分布式锁能力。模块只负责进程间互斥，不替代数据库唯一约束、条件更新、事务和业务幂等。
+模块位于 `knowledge-components/knowledge-lock-spring-boot-starter`，提供基于 Spring AOP 与 Redisson 的声明式分布式锁能力。模块只负责进程间互斥，不替代数据库唯一约束、条件更新、事务和业务幂等。
 
 包名保持 `com.knowledge.lock`。`knowledge` 是项目命名空间，`lock` 是组件能力；实现相关类型使用 `Redisson` 前缀，避免把具体实现伪装成通用抽象。
 
