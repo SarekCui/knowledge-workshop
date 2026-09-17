@@ -11,7 +11,10 @@
 ## 2. 模块依赖
 
 - Java 基础包统一为 `com.knowledge`；服务包格式为 `com.knowledge.{service}`，禁止使用个人姓名或 `cyf` 作为包路径。
-- 服务只依赖 `knowledge-api` 与 `knowledge-common`，禁止依赖其他服务的实现模块。
+- 服务可依赖 `knowledge-api`、`knowledge-common`、`knowledge-security` 和
+  `knowledge-components` 下职责单一的技术组件，禁止依赖其他业务服务的实现模块。
+- `knowledge-components` 仅作为 Maven 聚合父模块；业务服务必须按需依赖具体子模块，
+  不得直接依赖聚合 POM，也不得把多个无关技术能力合并成万能基础设施 Jar。
 - `knowledge-api` 中的契约按消费者需求设计，避免直接暴露数据库实体。
 - 公共模块不放业务枚举、业务表结构、Mapper 或 Controller。
 - 禁止循环依赖；使用 Maven Enforcer 和 ArchUnit 作为自动门禁。
