@@ -28,6 +28,11 @@ flowchart LR
 图中是当前已实现的服务边界。课程、章节、Note、权益和视频进度首版归属同一个
 `knowledge-learning` 服务，原因与未来拆分条件见 ADR-0010。
 
+可复用技术组件统一由 `knowledge-components` 聚合管理。该模块自身仅为 Maven
+聚合父模块，不承载运行时代码；对象存储位于 `knowledge-object-storage`，声明式
+分布式锁位于 `knowledge-lock-spring-boot-starter`。部署脚本、中间件镜像和数据库
+初始化继续保留在根目录 `infra`，不与 Java 技术组件混用。
+
 ## 2. 服务职责与数据所有权
 
 | 服务 | 职责 | 拥有的数据 | 明确不负责 |
