@@ -1,12 +1,23 @@
 package com.knowledge.learning.note.controller;
 
 import com.knowledge.api.common.Result;
+import com.knowledge.api.common.PageVO;
+import com.knowledge.common.converter.PageConverter;
 import com.knowledge.common.exception.RequestIdFilter;
 import com.knowledge.learning.note.converter.NoteConverter;
+import com.knowledge.learning.note.converter.NoteEngagementConverter;
+import com.knowledge.learning.note.dto.ChangeNoteStatusDTO;
+import com.knowledge.learning.note.dto.CreateNoteCommentDTO;
 import com.knowledge.learning.note.dto.CreateNoteDTO;
 import com.knowledge.learning.note.dto.RenameNoteDTO;
 import com.knowledge.learning.note.dto.UpdateNoteDTO;
+import com.knowledge.learning.note.enums.NoteSort;
+import com.knowledge.learning.note.service.NoteCommentService;
+import com.knowledge.learning.note.service.NoteEngagementService;
+import com.knowledge.learning.note.service.NoteQueryService;
 import com.knowledge.learning.note.service.NoteService;
+import com.knowledge.learning.note.vo.NoteCommentVO;
+import com.knowledge.learning.note.vo.NoteEngagementVO;
 import com.knowledge.learning.note.vo.NoteVO;
 import com.knowledge.security.context.UserContext;
 import jakarta.servlet.http.HttpServletRequest;
@@ -14,7 +25,9 @@ import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.PositiveOrZero;
+import jakarta.validation.constraints.Size;
 import java.util.List;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -32,10 +45,111 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/api/learning/notes")
 public class NoteController {
 
-    private final NoteService noteService;
+    @Autowired
+    private NoteService noteService;
+    @Autowired
+    private NoteQueryService queryService;
+    @Autowired
+    private NoteEngagementService engagementService;
+    @Autowired
+    private NoteCommentService commentService;
 
-    public NoteController(NoteService noteService) {
-        this.noteService = noteService;
+    @GetMapping("/public")
+    public Result<PageVO<NoteVO>> publicPage(@RequestParam(required = false) @Size(max = 64) String courseId,
+            @RequestParam(required = false) @Size(max = 100) String keyword,
+            @RequestParam(required = false) @Size(max = 20) String tag,
+            @RequestParam(defaultValue = "LATEST") NoteSort sort,
+            @RequestParam(defaultValue = "1") @Min(1) @Max(1000) int pageNo,
+            @RequestParam(defaultValue = "20") @Min(1) @Max(50) int pageSize, HttpServletRequest request) {
+        return Result.ok(PageConverter.toVO(queryService.publicPageForUser(UserContext.getUserIdOrNull(), courseId,
+                        keyword, tag, sort, pageNo, pageSize),
+                NoteConverter::toVO), requestId(request));
+    }
+
+    @GetMapping("/public/{noteId}")
+    public Result<NoteVO> publicDetail(@PathVariable String noteId, HttpServletRequest request) {
+        return Result.ok(NoteConverter.toVO(queryService.getPublicForUser(UserContext.getUserIdOrNull(), noteId)),
+                requestId(request));
+    }
+
+    @GetMapping("/mine")
+    public Result<PageVO<NoteVO>> mine(@RequestParam(required = false) @Size(max = 64) String courseId,
+            @RequestParam(required = false) @Size(max = 100) String keyword,
+            @RequestParam(defaultValue = "1") @Min(1) @Max(1000) int pageNo,
+            @RequestParam(defaultValue = "20") @Min(1) @Max(50) int pageSize, HttpServletRequest request) {
+        return Result.ok(PageConverter.toVO(queryService.mine(UserContext.getUserId(), courseId, keyword, pageNo, pageSize), NoteConverter::toVO), requestId(request));
+    }
+
+    @GetMapping("/liked")
+    public Result<PageVO<NoteVO>> liked(@RequestParam(defaultValue = "1") @Min(1) @Max(1000) int pageNo,
+            @RequestParam(defaultValue = "20") @Min(1) @Max(50) int pageSize, HttpServletRequest request) {
+        return Result.ok(PageConverter.toVO(queryService.liked(UserContext.getUserId(), pageNo, pageSize),
+                NoteConverter::toVO), requestId(request));
+    }
+
+    @GetMapping("/favorites")
+    public Result<PageVO<NoteVO>> favorites(@RequestParam(defaultValue = "1") @Min(1) @Max(1000) int pageNo,
+            @RequestParam(defaultValue = "20") @Min(1) @Max(50) int pageSize, HttpServletRequest request) {
+        return Result.ok(PageConverter.toVO(queryService.favorited(UserContext.getUserId(), pageNo, pageSize),
+                NoteConverter::toVO), requestId(request));
+    }
+
+    @GetMapping("/public/{noteId}/engagement")
+    public Result<NoteEngagementVO> engagement(@PathVariable String noteId, HttpServletRequest request) {
+        return Result.ok(NoteEngagementConverter.toVO(engagementService.get(UserContext.getUserIdOrNull(), noteId)),
+                requestId(request));
+    }
+
+    @PutMapping("/public/{noteId}/likes")
+    public Result<NoteEngagementVO> like(@PathVariable String noteId, HttpServletRequest request) {
+        return Result.ok(NoteEngagementConverter.toVO(engagementService.like(UserContext.getUserId(), noteId)),
+                requestId(request));
+    }
+
+    @DeleteMapping("/public/{noteId}/likes")
+    public Result<NoteEngagementVO> unlike(@PathVariable String noteId, HttpServletRequest request) {
+        return Result.ok(NoteEngagementConverter.toVO(engagementService.unlike(UserContext.getUserId(), noteId)),
+                requestId(request));
+    }
+
+    @PutMapping("/public/{noteId}/favorites")
+    public Result<NoteEngagementVO> favorite(@PathVariable String noteId, HttpServletRequest request) {
+        return Result.ok(NoteEngagementConverter.toVO(engagementService.favorite(UserContext.getUserId(), noteId)),
+                requestId(request));
+    }
+
+    @DeleteMapping("/public/{noteId}/favorites")
+    public Result<NoteEngagementVO> unfavorite(@PathVariable String noteId, HttpServletRequest request) {
+        return Result.ok(NoteEngagementConverter.toVO(engagementService.unfavorite(UserContext.getUserId(), noteId)),
+                requestId(request));
+    }
+
+    @GetMapping("/public/{noteId}/comments")
+    public Result<PageVO<NoteCommentVO>> comments(@PathVariable String noteId,
+            @RequestParam(defaultValue = "1") @Min(1) @Max(1000) int pageNo,
+            @RequestParam(defaultValue = "20") @Min(1) @Max(50) int pageSize, HttpServletRequest request) {
+        return Result.ok(PageConverter.toVO(commentService.page(UserContext.getUserIdOrNull(), noteId, pageNo, pageSize),
+                NoteEngagementConverter::toVO), requestId(request));
+    }
+
+    @PostMapping("/public/{noteId}/comments")
+    public Result<NoteCommentVO> comment(@PathVariable String noteId,
+            @Valid @RequestBody CreateNoteCommentDTO body, HttpServletRequest request) {
+        return Result.ok(NoteEngagementConverter.toVO(commentService.create(UserContext.getUserId(), noteId, body)),
+                requestId(request));
+    }
+
+    @DeleteMapping("/comments/{commentId}")
+    public Result<Void> deleteComment(@PathVariable String commentId,
+            @RequestParam @PositiveOrZero int version, HttpServletRequest request) {
+        commentService.delete(UserContext.getUserId(), commentId, version);
+        return Result.ok(null, requestId(request));
+    }
+
+    @PatchMapping("/{noteId}/status")
+    public Result<NoteVO> status(@PathVariable String noteId, @Valid @RequestBody ChangeNoteStatusDTO body,
+            HttpServletRequest request) {
+        return Result.ok(NoteConverter.toVO(noteService.changeStatus(UserContext.getUserId(), noteId, body)), requestId(request));
     }
 
     @PostMapping
@@ -48,7 +162,7 @@ public class NoteController {
     @GetMapping
     public Result<List<NoteVO>> list(@RequestParam(required = false) String courseId,
                                      @RequestParam(required = false) String chapterId,
-                                     @RequestParam(required = false) String keyword,
+                                     @RequestParam(required = false) @Size(max = 100) String keyword,
                                      @RequestParam(defaultValue = "20") @Min(1) @Max(100) int limit,
                                      HttpServletRequest servletRequest) {
         return Result.ok(noteService.list(UserContext.getUserId(), courseId, chapterId, keyword, limit)

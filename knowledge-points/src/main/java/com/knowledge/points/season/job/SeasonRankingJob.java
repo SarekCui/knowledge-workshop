@@ -2,23 +2,34 @@ package com.knowledge.points.season.job;
 
 import com.knowledge.points.ranking.service.QuarterTableRouter;
 import com.knowledge.points.season.service.SeasonMaintenanceService;
+import com.knowledge.points.season.service.SeasonSettlementService;
+import com.knowledge.points.season.rule.SeasonPeriodRule;
+import org.springframework.beans.factory.annotation.Autowired;
+import java.time.ZoneOffset;
 import com.xxl.job.core.handler.annotation.XxlJob;
 import java.time.Clock;
 import java.time.Instant;
-import java.time.temporal.ChronoUnit;
 import org.springframework.stereotype.Component;
 
 @Component
 public class SeasonRankingJob {
-    private final SeasonMaintenanceService maintenanceService;
-    private final QuarterTableRouter tableRouter;
-    private final Clock clock;
+    @Autowired
+    private SeasonMaintenanceService maintenanceService;
+    @Autowired
+    private QuarterTableRouter tableRouter;
+    @Autowired
+    private Clock clock;
+    @Autowired
+    private SeasonSettlementService settlementService;
 
-    public SeasonRankingJob(SeasonMaintenanceService maintenanceService,
-                            QuarterTableRouter tableRouter, Clock clock) {
-        this.maintenanceService = maintenanceService;
-        this.tableRouter = tableRouter;
-        this.clock = clock;
+    @XxlJob("settlePointSeason")
+    public void settlePreviousSeason() {
+        settlementService.settle(tableRouter.route(previousSeasonInstant()).season());
+    }
+
+    private Instant previousSeasonInstant() {
+        String current = tableRouter.route(Instant.now(clock)).season();
+        return SeasonPeriodRule.startsAt(current).toInstant(ZoneOffset.UTC).minusNanos(1);
     }
 
     @XxlJob("seasonRankingSnapshot")
@@ -28,6 +39,6 @@ public class SeasonRankingJob {
 
     @XxlJob("archivePointLedger")
     public void archivePreviousSeason() {
-        maintenanceService.archive(tableRouter.route(Instant.now(clock).minus(100, ChronoUnit.DAYS)));
+        maintenanceService.archive(tableRouter.route(previousSeasonInstant()));
     }
 }

@@ -16,6 +16,7 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.MediaType;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.core.GrantedAuthority;
@@ -38,6 +39,14 @@ public class ResourceServerConfiguration {
                 .csrf(csrf -> csrf.disable())
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(authorize -> authorize
+                        .requestMatchers(HttpMethod.GET,
+                                "/api/learning/catalog/**",
+                                "/api/learning/notes/public",
+                                "/api/learning/notes/public/*",
+                                "/api/learning/notes/public/*/engagement",
+                                "/api/learning/notes/public/*/comments",
+                                "/api/learning/note-images/*/access")
+                        .permitAll()
                         .requestMatchers("/actuator/health", "/actuator/info", "/v3/api-docs/**",
                                 "/swagger-ui.html", "/swagger-ui/**")
                         .permitAll()

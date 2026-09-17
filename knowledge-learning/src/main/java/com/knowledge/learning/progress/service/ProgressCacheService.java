@@ -10,6 +10,7 @@ import java.util.Set;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.data.redis.core.script.DefaultRedisScript;
 import org.springframework.stereotype.Service;
+import org.springframework.beans.factory.annotation.Autowired;
 
 @Service
 public class ProgressCacheService {
@@ -20,7 +21,8 @@ public class ProgressCacheService {
             local oldSequence = tonumber(redis.call('HGET', KEYS[1], 'sequence') or '-1')
             local newEpoch = tonumber(ARGV[9])
             local newSequence = tonumber(ARGV[10])
-            if newEpoch > oldEpoch or (newEpoch == oldEpoch and newSequence >= oldSequence) then
+            if newEpoch > oldEpoch or (newEpoch == oldEpoch and
+              (newSequence > oldSequence or (newSequence == oldSequence and ARGV[15] == '1'))) then
               redis.call('HSET', KEYS[1],
                 'courseId', ARGV[1], 'chapterId', ARGV[2], 'videoId', ARGV[3],
                 'videoVersion', ARGV[4], 'resumePositionMs', ARGV[5],
@@ -33,13 +35,18 @@ public class ProgressCacheService {
             return 0
             """, Long.class);
 
-    private final StringRedisTemplate redisTemplate;
-
-    public ProgressCacheService(StringRedisTemplate redisTemplate) {
-        this.redisTemplate = redisTemplate;
-    }
+    @Autowired
+    private StringRedisTemplate redisTemplate;
 
     public boolean put(String userId, VideoProgressBO progress) {
+        return put(userId, progress, true);
+    }
+
+    public boolean putOptimistic(String userId, VideoProgressBO progress) {
+        return put(userId, progress, false);
+    }
+
+    private boolean put(String userId, VideoProgressBO progress, boolean allowEqual) {
         Long updated = redisTemplate.execute(UPDATE_SCRIPT, List.of(progressKey(userId, progress.videoId(),
                         progress.videoVersion())), progress.courseId(), progress.chapterId(), progress.videoId(),
                 String.valueOf(progress.videoVersion()), String.valueOf(progress.resumePositionMs()),
@@ -47,7 +54,7 @@ public class ProgressCacheService {
                 String.valueOf(progress.watchedSeconds()), String.valueOf(progress.sessionEpoch()),
                 String.valueOf(progress.sequence()), String.valueOf(progress.completionRate()),
                 progress.status().name(), String.valueOf(progress.updatedAt()),
-                String.valueOf(PROGRESS_TTL.toSeconds()));
+                String.valueOf(PROGRESS_TTL.toSeconds()), allowEqual ? "1" : "0");
         if (Long.valueOf(1).equals(updated)) {
             redisTemplate.opsForZSet().add(recentKey(userId),
                     progress.videoId() + ":" + progress.videoVersion(), System.currentTimeMillis());
@@ -61,6 +68,12 @@ public class ProgressCacheService {
         Map<Object, Object> values = redisTemplate.opsForHash().entries(progressKey(userId, videoId, videoVersion));
         if (values.isEmpty()) {
             return null;
+        }
+        for (String field : List.of("courseId", "chapterId", "videoId", "videoVersion", "resumePositionMs",
+                "maxPositionMs", "durationMs", "watchedSeconds", "completionRate", "status", "sessionEpoch", "sequence", "updatedAt")) {
+            if (values.get(field) == null) {
+                throw new IllegalArgumentException("断点缓存字段缺失: " + field);
+            }
         }
         redisTemplate.expire(progressKey(userId, videoId, videoVersion), PROGRESS_TTL);
         return new VideoProgressBO(text(values, "courseId"), text(values, "chapterId"), text(values, "videoId"),

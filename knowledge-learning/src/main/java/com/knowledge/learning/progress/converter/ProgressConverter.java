@@ -34,6 +34,6 @@ public final class ProgressConverter {
 
     public static ProgressReportVO toVO(ProgressReportBO source) {
         return new ProgressReportVO(source.eventId(), source.sessionEpoch(), source.sequence(),
-                source.resumePositionMs(), source.accepted());
+                source.resumePositionMs(), source.accepted(), source.cacheUpdated());
     }
 }

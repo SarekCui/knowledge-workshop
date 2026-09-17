@@ -15,6 +15,7 @@
 - MySQL 保存进度事实快照和消费 Inbox，Redis 保存断点、会话、最近学习列表及观看 Bitmap 投影。
 - 使用服务端 `sessionEpoch` 解决跨设备冲突，使用会话内 `sequence` 解决重复和乱序。
 - 断点位置与真实观看完成度独立建模，拖动不直接计入观看区间。
+- 第5.5轮加固：会话创建与校验续期使用Lua原子操作及同槽v2 Key；Publisher Confirm结合mandatory/Returns判断消息是否可靠接收。查询Redis故障时回源MySQL，会话Redis故障时安全失败。确认后缓存失败不改变消息已接收的结果，详见第5.5轮验收记录。
 
 ## 备选方案
 

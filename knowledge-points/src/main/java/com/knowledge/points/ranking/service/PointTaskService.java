@@ -7,24 +7,33 @@ import com.knowledge.points.ranking.dao.model.PointTaskDO;
 import com.knowledge.points.ranking.enums.PointTaskStatus;
 import com.knowledge.points.ranking.dao.mapper.PointTaskMapper;
 import java.time.LocalDateTime;
+import java.time.ZoneOffset;
 import java.util.UUID;
 import org.springframework.stereotype.Service;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.transaction.annotation.Propagation;
+import org.springframework.transaction.annotation.Transactional;
+import com.knowledge.points.season.service.SeasonWriteService;
 
 @Service
 public class PointTaskService {
 
-    private final PointTaskMapper taskMapper;
-    private final ObjectMapper objectMapper;
+    @Autowired
+    private PointTaskMapper taskMapper;
+    @Autowired
+    private ObjectMapper objectMapper;
+    @Autowired
+    private SeasonWriteService seasonWriteService;
+    @Autowired
+    private QuarterTableRouter tableRouter;
 
-    public PointTaskService(PointTaskMapper taskMapper, ObjectMapper objectMapper) {
-        this.taskMapper = taskMapper;
-        this.objectMapper = objectMapper;
-    }
-
+    @Transactional(propagation = Propagation.MANDATORY)
     public void create(PointGrantEventDTO event, LocalDateTime now) {
+        seasonWriteService.requireWritable(tableRouter.route(event.occurredAt()).season());
         PointTaskDO task = new PointTaskDO();
         task.setId(UUID.randomUUID().toString());
         task.setEventId(event.eventId());
+        task.setOccurredAt(LocalDateTime.ofInstant(event.occurredAt(), ZoneOffset.UTC));
         try {
             task.setPayload(objectMapper.writeValueAsString(event));
         } catch (JsonProcessingException exception) {

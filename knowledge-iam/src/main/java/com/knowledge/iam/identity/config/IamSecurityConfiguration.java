@@ -9,12 +9,16 @@ import javax.crypto.spec.SecretKeySpec;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.oauth2.jwt.JwtEncoder;
+import org.springframework.security.oauth2.jwt.JwtDecoder;
+import org.springframework.security.oauth2.jwt.JwtValidators;
+import org.springframework.security.oauth2.jwt.NimbusJwtDecoder;
 import org.springframework.security.oauth2.jwt.NimbusJwtEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 
@@ -27,10 +31,14 @@ public class IamSecurityConfiguration {
                 .csrf(csrf -> csrf.disable())
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(authorize -> authorize
+                        .requestMatchers(HttpMethod.GET, "/api/iam/users/public").permitAll()
                         .requestMatchers(
                                 "/api/iam/auth/login",
                                 "/api/iam/auth/refresh",
                                 "/api/iam/auth/logout",
+                                "/api/iam/web/auth/login",
+                                "/api/iam/web/auth/refresh",
+                                "/api/iam/web/auth/logout",
                                 "/actuator/health",
                                 "/actuator/info",
                                 "/v3/api-docs/**",
@@ -42,6 +50,7 @@ public class IamSecurityConfiguration {
                 .formLogin(formLogin -> formLogin.disable())
                 .logout(logout -> logout.disable())
                 .cors(Customizer.withDefaults())
+                .oauth2ResourceServer(resourceServer -> resourceServer.jwt(Customizer.withDefaults()))
                 .build();
     }
 
@@ -62,6 +71,14 @@ public class IamSecurityConfiguration {
     @Bean
     JwtEncoder jwtEncoder(SecretKey jwtSecretKey) {
         return new NimbusJwtEncoder(new ImmutableSecret<>(jwtSecretKey));
+    }
+
+    @Bean
+    JwtDecoder jwtDecoder(SecretKey jwtSecretKey,
+                          @Value("${knowledge.security.jwt.issuer:knowledge-iam}") String issuer) {
+        NimbusJwtDecoder decoder = NimbusJwtDecoder.withSecretKey(jwtSecretKey).build();
+        decoder.setJwtValidator(JwtValidators.createDefaultWithIssuer(issuer));
+        return decoder;
     }
 
     @Bean

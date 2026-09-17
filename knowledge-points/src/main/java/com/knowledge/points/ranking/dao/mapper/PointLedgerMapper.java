@@ -8,6 +8,16 @@ import org.apache.ibatis.annotations.Param;
 import org.apache.ibatis.annotations.Select;
 
 public interface PointLedgerMapper {
+    @Select("SELECT COUNT(*) FROM ${tableName} WHERE event_id = #{eventId}")
+    int countEvent(@Param("tableName") String validatedTableName, @Param("eventId") String eventId);
+
+    @Select("""
+            SELECT COUNT(*) FROM point_task t
+            WHERE t.occurred_at >= #{startsAt} AND t.occurred_at < #{endsAt}
+              AND NOT EXISTS (SELECT 1 FROM ${tableName} l WHERE l.event_id = t.event_id)
+            """)
+    long countOutstandingTasks(@Param("tableName") String validatedTableName,
+            @Param("startsAt") String startsAt, @Param("endsAt") String endsAt);
 
     @Insert("""
             INSERT IGNORE INTO ${tableName}

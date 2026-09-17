@@ -1,6 +1,8 @@
 package com.knowledge.learning.note.vo;
 
 import java.time.LocalDateTime;
+import com.knowledge.learning.note.enums.NoteStatus;
+import java.util.List;
 
 public record NoteVO(
         String id,
@@ -11,5 +13,14 @@ public record NoteVO(
         Long videoPositionMs,
         int version,
         LocalDateTime createdAt,
-        LocalDateTime updatedAt) {
+        LocalDateTime updatedAt,
+        String authorId,
+        NoteStatus status,
+        LocalDateTime publishedAt,
+        long likeCount,
+        long favoriteCount,
+        long commentCount,
+        List<String> tags,
+        boolean liked,
+        boolean favorited) {
 }

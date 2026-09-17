@@ -1,0 +1,22 @@
+CREATE TABLE note_image (
+    id VARCHAR(64) NOT NULL,
+    user_id VARCHAR(64) NOT NULL,
+    note_id VARCHAR(64) NULL,
+    object_key VARCHAR(255) NOT NULL,
+    content_type VARCHAR(32) NOT NULL,
+    file_size BIGINT UNSIGNED NOT NULL,
+    width INT UNSIGNED NOT NULL,
+    height INT UNSIGNED NOT NULL,
+    status VARCHAR(16) NOT NULL,
+    expires_at DATETIME(3) NULL,
+    cleanup_token VARCHAR(64) NULL,
+    version INT UNSIGNED NOT NULL DEFAULT 0,
+    created_at DATETIME(3) NOT NULL,
+    updated_at DATETIME(3) NOT NULL,
+    PRIMARY KEY (id),
+    UNIQUE KEY uk_note_image_object_key (object_key),
+    INDEX idx_note_image_note (note_id, status),
+    INDEX idx_note_image_cleanup (status, expires_at),
+    INDEX idx_note_image_user_temp (user_id, status),
+    CONSTRAINT fk_note_image_note FOREIGN KEY (note_id) REFERENCES note(id)
+);

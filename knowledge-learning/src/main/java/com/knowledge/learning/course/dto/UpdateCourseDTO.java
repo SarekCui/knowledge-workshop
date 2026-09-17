@@ -10,5 +10,10 @@ public record UpdateCourseDTO(
         @NotNull @Size(max = 2000) String summary,
         @Size(max = 500) String coverUrl,
         @NotNull @PositiveOrZero Long priceCents,
-        @NotNull @PositiveOrZero Integer version) {
+        @NotNull @PositiveOrZero Integer version,
+        @Size(max = 64) String categoryId) {
+
+    public UpdateCourseDTO(String title, String summary, String coverUrl, Long priceCents, Integer version) {
+        this(title, summary, coverUrl, priceCents, version, null);
+    }
 }

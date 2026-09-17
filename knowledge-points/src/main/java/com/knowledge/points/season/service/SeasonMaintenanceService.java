@@ -17,31 +17,30 @@ import java.util.List;
 import java.util.UUID;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.beans.factory.annotation.Autowired;
 
 @Service
 public class SeasonMaintenanceService {
 
-    private final LeaderboardService leaderboardService;
-    private final SeasonSnapshotMapper snapshotMapper;
-    private final SeasonArchiveMapper archiveMapper;
-    private final JobExecutionMapper executionMapper;
-    private final Clock clock;
-
-    public SeasonMaintenanceService(LeaderboardService leaderboardService,
-                                    SeasonSnapshotMapper snapshotMapper,
-                                    SeasonArchiveMapper archiveMapper,
-                                    JobExecutionMapper executionMapper,
-                                    Clock clock) {
-        this.leaderboardService = leaderboardService;
-        this.snapshotMapper = snapshotMapper;
-        this.archiveMapper = archiveMapper;
-        this.executionMapper = executionMapper;
-        this.clock = clock;
-    }
+    @Autowired
+    private LeaderboardService leaderboardService;
+    @Autowired
+    private SeasonSnapshotMapper snapshotMapper;
+    @Autowired
+    private SeasonArchiveMapper archiveMapper;
+    @Autowired
+    private JobExecutionMapper executionMapper;
+    @Autowired
+    private Clock clock;
+    @Autowired
+    private SeasonWriteService seasonWriteService;
 
     @Transactional
     @DistributedLock(keys = SeasonRedisKey.SNAPSHOT_LOCK_SPEL, leaseTime = 60)
     public int snapshot(String season, int topN) {
+        if (seasonWriteService.lockAndIsSettled(season)) {
+            return 0;
+        }
         if (executed("SEASON_SNAPSHOT", season)) {
             return 0;
         }
@@ -64,6 +63,9 @@ public class SeasonMaintenanceService {
     @Transactional
     @DistributedLock(keys = SeasonRedisKey.ARCHIVE_LOCK_SPEL, leaseTime = 60)
     public boolean archive(QuarterTableRouteBO route) {
+        if (seasonWriteService.lockAndIsSettled(route.season())) {
+            return false;
+        }
         if (executed("SEASON_ARCHIVE", route.season())) {
             return false;
         }

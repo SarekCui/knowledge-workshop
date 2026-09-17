@@ -46,10 +46,22 @@ public class GatewaySecurityConfiguration {
                 .logout(ServerHttpSecurity.LogoutSpec::disable)
                 .authorizeExchange(authorize -> authorize
                         .pathMatchers(HttpMethod.OPTIONS).permitAll()
+                        .pathMatchers(HttpMethod.GET,
+                                "/api/learning/catalog/**",
+                                "/api/learning/notes/public",
+                                "/api/learning/notes/public/*",
+                                "/api/learning/notes/public/*/engagement",
+                                "/api/learning/notes/public/*/comments",
+                                "/api/learning/note-images/*/access",
+                                "/api/iam/users/public")
+                        .permitAll()
                         .pathMatchers(
                                 "/api/iam/auth/login",
                                 "/api/iam/auth/refresh",
                                 "/api/iam/auth/logout",
+                                "/api/iam/web/auth/login",
+                                "/api/iam/web/auth/refresh",
+                                "/api/iam/web/auth/logout",
                                 "/actuator/health",
                                 "/actuator/info")
                         .permitAll()

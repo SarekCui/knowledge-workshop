@@ -21,7 +21,7 @@
         </dependency>
         <dependency>
             <groupId>com.knowledge</groupId>
-            <artifactId>distributed-lock-spring-boot-starter</artifactId>
+            <artifactId>knowledge-lock-spring-boot-starter</artifactId>
             <version>${project.version}</version>
         </dependency>
         <dependency>

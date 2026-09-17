@@ -14,7 +14,7 @@ public class MarketingRabbitConfiguration {
 
     public static final String EVENT_EXCHANGE = "knowledge.events";
     public static final String DEAD_LETTER_EXCHANGE = "knowledge.events.dlx";
-    public static final String GROUP_FORMED_QUEUE = "learning.group-formed";
+    public static final String GROUP_FORMED_QUEUE = "learning.group-formed.v2";
     public static final String GROUP_FORMED_DEAD_QUEUE = "learning.group-formed.dlq";
     public static final String GROUP_FORMED_ROUTING_KEY = "marketing.group.formed.v1";
 

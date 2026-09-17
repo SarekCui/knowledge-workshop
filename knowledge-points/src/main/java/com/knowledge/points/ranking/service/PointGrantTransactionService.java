@@ -14,29 +14,35 @@ import java.time.ZoneOffset;
 import java.util.UUID;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.beans.factory.annotation.Autowired;
+import com.knowledge.points.season.service.SeasonWriteService;
+import com.knowledge.points.season.service.SeasonClosedException;
 
 @Service
 public class PointGrantTransactionService {
 
-    private final PointLedgerMapper ledgerMapper;
-    private final PointAccountMapper accountMapper;
-    private final QuarterTableRouter tableRouter;
-    private final Clock clock;
-    private final SeasonAccountMapper seasonAccountMapper;
-
-    public PointGrantTransactionService(PointLedgerMapper ledgerMapper, PointAccountMapper accountMapper,
-                                        QuarterTableRouter tableRouter, Clock clock,
-                                        SeasonAccountMapper seasonAccountMapper) {
-        this.ledgerMapper = ledgerMapper;
-        this.accountMapper = accountMapper;
-        this.tableRouter = tableRouter;
-        this.clock = clock;
-        this.seasonAccountMapper = seasonAccountMapper;
-    }
+    @Autowired
+    private PointLedgerMapper ledgerMapper;
+    @Autowired
+    private PointAccountMapper accountMapper;
+    @Autowired
+    private QuarterTableRouter tableRouter;
+    @Autowired
+    private Clock clock;
+    @Autowired
+    private SeasonAccountMapper seasonAccountMapper;
+    @Autowired
+    private SeasonWriteService seasonWriteService;
 
     @Transactional
     public PointGrantResultBO grant(PointGrantEventDTO event) {
         QuarterTableRouteBO route = tableRouter.route(event.occurredAt());
+        if (seasonWriteService.lockAndIsSettled(route.season())) {
+            if (ledgerMapper.countEvent(route.tableName(), event.eventId()) > 0) {
+                return findExistingResult(event);
+            }
+            throw new SeasonClosedException(route.season());
+        }
         LocalDateTime now = LocalDateTime.now(clock);
         PointLedgerDO ledger = new PointLedgerDO();
         ledger.setId(UUID.randomUUID().toString());

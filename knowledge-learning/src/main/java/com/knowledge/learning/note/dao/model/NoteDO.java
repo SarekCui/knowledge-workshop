@@ -3,6 +3,7 @@ package com.knowledge.learning.note.dao.model;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
 import java.time.LocalDateTime;
+import com.knowledge.learning.note.enums.NoteStatus;
 import lombok.Getter;
 import lombok.Setter;
 
@@ -23,4 +24,9 @@ public class NoteDO {
     private Integer deleted;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
+    private NoteStatus status;
+    private LocalDateTime publishedAt;
+    private Long likeCount;
+    private Long favoriteCount;
+    private Long commentCount;
 }

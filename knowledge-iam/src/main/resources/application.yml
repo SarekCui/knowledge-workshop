@@ -17,6 +17,10 @@ spring:
     password: ${IAM_DB_PASSWORD:root}
   flyway:
     enabled: true
+  servlet:
+    multipart:
+      max-file-size: 2MB
+      max-request-size: 3MB
 
 mybatis-plus:
   configuration:
@@ -25,7 +29,16 @@ mybatis-plus:
     banner: false
 
 knowledge:
+  storage:
+    enabled: ${OBJECT_STORAGE_ENABLED:true}
+    endpoint: ${OBJECT_STORAGE_ENDPOINT:http://127.0.0.1:9000}
+    access-key: ${OBJECT_STORAGE_ACCESS_KEY:knowledge}
+    secret-key: ${OBJECT_STORAGE_SECRET_KEY:knowledge-secret}
+    bucket: ${OBJECT_STORAGE_BUCKET:knowledge-avatar}
   security:
+    web:
+      cookie-secure: ${WEB_AUTH_COOKIE_SECURE:true}
+      allowed-origins: ${WEB_AUTH_ALLOWED_ORIGINS:http://127.0.0.1:5173,http://localhost:5173}
     jwt:
       secret: ${JWT_SECRET}
       issuer: knowledge-iam

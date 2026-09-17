@@ -11,6 +11,7 @@ import lombok.Setter;
 @Setter
 @TableName("point_task")
 public class PointTaskDO {
+    private LocalDateTime occurredAt;
     @TableId
     private String id;
     private String eventId;

@@ -6,20 +6,24 @@ import com.knowledge.api.learning.dto.VideoProgressReportedEventDTO;
 import com.knowledge.common.exception.BusinessException;
 import com.knowledge.learning.entitlement.config.LearningRabbitConfiguration;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeoutException;
 import org.springframework.amqp.rabbit.connection.CorrelationData;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.stereotype.Service;
+import org.springframework.amqp.AmqpException;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 
 @Service
 public class ProgressEventPublisher {
 
-    private final RabbitTemplate rabbitTemplate;
-    private final ObjectMapper objectMapper;
-
-    public ProgressEventPublisher(RabbitTemplate rabbitTemplate, ObjectMapper objectMapper) {
-        this.rabbitTemplate = rabbitTemplate;
-        this.objectMapper = objectMapper;
-    }
+    @Autowired
+    private RabbitTemplate rabbitTemplate;
+    @Autowired
+    private ObjectMapper objectMapper;
+    @Value("${knowledge.learning.progress.confirm-timeout-ms:5000}")
+    private long confirmTimeoutMs;
 
     public void publish(VideoProgressReportedEventDTO event) {
         try {
@@ -27,8 +31,8 @@ public class ProgressEventPublisher {
             CorrelationData correlation = new CorrelationData(event.eventId());
             rabbitTemplate.convertAndSend(LearningRabbitConfiguration.EVENT_EXCHANGE,
                     LearningRabbitConfiguration.PROGRESS_ROUTING_KEY, payload, correlation);
-            CorrelationData.Confirm confirm = correlation.getFuture().get(5, TimeUnit.SECONDS);
-            if (!confirm.isAck()) {
+            CorrelationData.Confirm confirm = correlation.getFuture().get(confirmTimeoutMs, TimeUnit.MILLISECONDS);
+            if (!confirm.isAck() || correlation.getReturned() != null) {
                 throw BusinessException.serviceUnavailable("学习进度暂时无法可靠保存，请稍后重试");
             }
         } catch (JsonProcessingException exception) {
@@ -36,7 +40,7 @@ public class ProgressEventPublisher {
         } catch (InterruptedException exception) {
             Thread.currentThread().interrupt();
             throw BusinessException.serviceUnavailable("学习进度保存被中断，请稍后重试");
-        } catch (java.util.concurrent.ExecutionException | java.util.concurrent.TimeoutException exception) {
+        } catch (AmqpException | ExecutionException | TimeoutException exception) {
             throw BusinessException.serviceUnavailable("学习进度暂时无法可靠保存，请稍后重试");
         }
     }

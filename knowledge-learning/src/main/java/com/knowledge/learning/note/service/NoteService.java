@@ -12,6 +12,9 @@ import com.knowledge.learning.note.dao.model.NoteDO;
 import com.knowledge.learning.note.dto.CreateNoteDTO;
 import com.knowledge.learning.note.dto.RenameNoteDTO;
 import com.knowledge.learning.note.dto.UpdateNoteDTO;
+import com.knowledge.learning.note.dto.ChangeNoteStatusDTO;
+import com.knowledge.learning.note.enums.NoteStatus;
+import org.springframework.beans.factory.annotation.Autowired;
 import java.time.Clock;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -23,29 +26,37 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class NoteService {
 
-    private final NoteMapper noteMapper;
-    private final CourseQueryService courseQueryService;
-    private final EntitlementService entitlementService;
-    private final Clock clock;
-
-    public NoteService(NoteMapper noteMapper, CourseQueryService courseQueryService,
-                       EntitlementService entitlementService, Clock clock) {
-        this.noteMapper = noteMapper;
-        this.courseQueryService = courseQueryService;
-        this.entitlementService = entitlementService;
-        this.clock = clock;
-    }
+    @Autowired
+    private NoteMapper noteMapper;
+    @Autowired
+    private CourseQueryService courseQueryService;
+    @Autowired
+    private EntitlementService entitlementService;
+    @Autowired
+    private NoteTagService noteTagService;
+    @Autowired
+    private NoteImageService noteImageService;
+    @Autowired
+    private Clock clock;
 
     @Transactional
     public NoteBO create(String userId, CreateNoteDTO request) {
+        List<String> tags = noteTagService.normalize(request.tags());
         String chapterId = normalizeNullable(request.chapterId());
-        ChapterBO chapter = courseQueryService.requirePublishedCourseAndOptionalChapter(request.courseId(), chapterId);
-        entitlementService.requireActive(userId, request.courseId());
+        String courseId = normalizeNullable(request.courseId());
+        if (courseId == null && chapterId != null) {
+            throw BusinessException.badRequest("无关联课程的 Note 不能设置章节");
+        }
+        ChapterBO chapter = courseId == null ? null
+                : courseQueryService.requirePublishedCourseAndOptionalChapter(courseId, chapterId);
+        if (request.videoPositionMs() != null && courseId != null) {
+            entitlementService.requireActive(userId, courseId);
+        }
         validatePosition(request.videoPositionMs(), chapter);
         NoteDO note = new NoteDO();
         note.setId(UUID.randomUUID().toString());
         note.setUserId(userId);
-        note.setCourseId(request.courseId());
+        note.setCourseId(courseId);
         note.setChapterId(chapterId);
         note.setClientRequestId(request.clientRequestId().trim());
         note.setTitle(normalizeTitle(request.title()));
@@ -53,23 +64,31 @@ public class NoteService {
         note.setVideoPositionMs(request.videoPositionMs());
         note.setVersion(0);
         note.setDeleted(0);
+        note.setStatus(NoteStatus.DRAFT);
+        note.setLikeCount(0L);
+        note.setFavoriteCount(0L);
+        note.setCommentCount(0L);
         LocalDateTime now = LocalDateTime.now(clock);
         note.setCreatedAt(now);
         note.setUpdatedAt(now);
         try {
             noteMapper.insert(note);
-            return NoteConverter.toBO(note);
+            noteTagService.replace(note.getId(), tags);
+            noteImageService.syncReferences(userId, note.getId(), note.getContent());
+            return NoteConverter.toBO(note, tags);
         } catch (DuplicateKeyException duplicate) {
             NoteDO existing = noteMapper.findByRequest(userId, request.clientRequestId().trim());
-            if (existing != null && sameCreate(existing, note)) {
-                return NoteConverter.toBO(existing);
+            List<String> existingTags = existing == null ? List.of() : noteTagService.find(existing.getId());
+            if (existing != null && sameCreate(existing, note) && existingTags.equals(tags)) {
+                return NoteConverter.toBO(existing, existingTags);
             }
             throw BusinessException.conflict("相同 clientRequestId 已用于其他笔记内容");
         }
     }
 
     public NoteBO get(String userId, String noteId) {
-        return NoteConverter.toBO(requireOwned(userId, noteId));
+        NoteDO note = requireOwned(userId, noteId);
+        return NoteConverter.toBO(note, noteTagService.find(noteId));
     }
 
     public List<NoteBO> list(String userId, String courseId, String chapterId, String keyword, int limit) {
@@ -81,23 +100,29 @@ public class NoteService {
                 .like(keyword != null && !keyword.isBlank(), NoteDO::getTitle, keyword == null ? null : keyword.trim())
                 .orderByDesc(NoteDO::getUpdatedAt)
                 .last("LIMIT " + Math.min(Math.max(limit, 1), 100));
-        return noteMapper.selectList(query).stream().map(NoteConverter::toBO).toList();
+        return toBOs(noteMapper.selectList(query));
     }
 
     @Transactional
     public NoteBO update(String userId, String noteId, UpdateNoteDTO request) {
-        requireOwned(userId, noteId);
-        validateNonNegativePosition(request.videoPositionMs());
+        NoteDO note = requireEditable(userId, noteId);
+        List<String> tags = noteTagService.normalize(request.tags());
+        ChapterBO chapter = note.getCourseId() == null ? null
+                : courseQueryService.requirePublishedCourseAndOptionalChapter(note.getCourseId(), note.getChapterId());
+        validatePosition(request.videoPositionMs(), chapter);
+        if (request.videoPositionMs() != null) entitlementService.requireActive(userId, note.getCourseId());
         if (noteMapper.updateContent(noteId, userId, normalizeTitle(request.title()), request.content().trim(),
                 request.videoPositionMs(), request.version(), LocalDateTime.now(clock)) != 1) {
             throw BusinessException.conflict("Note 已被其他设备修改，请刷新后重试");
         }
+        noteTagService.replace(noteId, tags);
+        noteImageService.syncReferences(userId, noteId, request.content());
         return get(userId, noteId);
     }
 
     @Transactional
     public NoteBO rename(String userId, String noteId, RenameNoteDTO request) {
-        requireOwned(userId, noteId);
+        requireEditable(userId, noteId);
         if (noteMapper.rename(noteId, userId, normalizeTitle(request.title()), request.version(),
                 LocalDateTime.now(clock)) != 1) {
             throw BusinessException.conflict("Note 已被其他设备修改，请刷新后重试");
@@ -111,10 +136,37 @@ public class NoteService {
         if (noteMapper.softDelete(noteId, userId, version, LocalDateTime.now(clock)) != 1) {
             throw BusinessException.conflict("Note 已被其他设备修改，请刷新后重试");
         }
+        noteImageService.releaseAll(noteId);
     }
 
     public boolean hasActiveNoteForChapter(String chapterId) {
         return noteMapper.countActiveByChapter(chapterId) > 0;
+    }
+
+    @Transactional
+    public NoteBO changeStatus(String userId, String noteId, ChangeNoteStatusDTO request) {
+        NoteDO note = requireOwned(userId, noteId);
+        if (request.status() == NoteStatus.PUBLIC && note.getContent().isBlank()) {
+            throw BusinessException.badRequest("发布 Note 必须填写正文");
+        }
+        if (note.getVersion() != request.version()) {
+            throw BusinessException.conflict("Note 已被其他设备修改，请刷新后重试");
+        }
+        if (note.getStatus() == request.status()) return NoteConverter.toBO(note, noteTagService.find(noteId));
+        LocalDateTime now = LocalDateTime.now(clock);
+        if (noteMapper.changeStatus(noteId, userId, request.status(), request.version(),
+                request.status() == NoteStatus.PUBLIC ? now : null, now) != 1) {
+            throw BusinessException.conflict("Note 状态已变化，请刷新后重试");
+        }
+        return get(userId, noteId);
+    }
+
+    private NoteDO requireEditable(String userId, String noteId) {
+        NoteDO note = requireOwned(userId, noteId);
+        if (note.getStatus() == NoteStatus.PUBLIC) {
+            throw BusinessException.conflict("请先将公开 Note 转为草稿或私人，再进行编辑");
+        }
+        return note;
     }
 
     private NoteDO requireOwned(String userId, String noteId) {
@@ -158,10 +210,18 @@ public class NoteService {
 
     private boolean sameCreate(NoteDO existing, NoteDO requested) {
         return existing.getDeleted() == 0
-                && existing.getCourseId().equals(requested.getCourseId())
+                && java.util.Objects.equals(existing.getCourseId(), requested.getCourseId())
                 && java.util.Objects.equals(existing.getChapterId(), requested.getChapterId())
                 && existing.getTitle().equals(requested.getTitle())
                 && existing.getContent().equals(requested.getContent())
                 && java.util.Objects.equals(existing.getVideoPositionMs(), requested.getVideoPositionMs());
+    }
+
+    private List<NoteBO> toBOs(List<NoteDO> notes) {
+        if (notes.isEmpty()) return List.of();
+        var tags = noteTagService.findByNoteIds(notes.stream().map(NoteDO::getId).toList());
+        return notes.stream()
+                .map(note -> NoteConverter.toBO(note, tags.getOrDefault(note.getId(), List.of())))
+                .toList();
     }
 }
