@@ -14,6 +14,7 @@
 - Java 基础包必须使用 `com.knowledge`，服务代码位于 `com.knowledge.{service}`；不得使用个人标识作为包路径。
 - 服务包先按业务域拆分，再在域内使用传统分层：`{domain}.controller -> {domain}.service -> {domain}.dao.mapper`；数据库映射对象位于 `{domain}.dao.model`，辅助目录为 `dto`、`bo`、`vo`、`converter`、`config`、`mq`、`job`、`rule`、`enums`。
 - Controller 只负责协议转换、参数校验和调用 Service；不得承载事务与核心业务判断。
+- 新增和修改业务组件使用 `@Autowired` 字段注入；基础设施 `@Bean` 保留方法参数注入，同类型多 Bean 无法消歧时再使用 `@Qualifier`。
 - Service 负责业务编排和事务边界；复杂校验拆到 `rule` 责任链，通用技术能力拆到独立 Starter。
 - Mapper 只负责数据访问，不得调用远程服务、MQ 或 Redis。
 - 持久化对象统一使用 `DO` 后缀，接口输入和跨服务传输对象统一使用 `DTO` 后缀，Service 业务结果统一使用 `BO` 后缀，Controller 对外展示对象统一使用 `VO` 后缀。
@@ -21,7 +22,16 @@
 - 禁止把所有 Controller、Service、Mapper 或 DO 挤入服务级同名目录；跨业务域调用通过对方 Service，不直接访问对方 Mapper。
 - `knowledge-api` 只存放跨服务契约，不存放业务实现或持久化实体。
 - `knowledge-common` 只容纳稳定、通用、无业务语义的能力；禁止成为杂物模块。
+- 可复用技术组件由 `knowledge-components` 聚合；业务服务按需依赖具体组件，禁止依赖聚合 POM，部署设施仍位于根目录 `infra`。
 - 服务之间禁止直接访问对方数据库，禁止共享持久化实体。
+
+## 前端约束
+
+- 前端使用 React、TypeScript 和 Ant Design；只实现接入实际业务接口的功能，不添加无用 Demo 或 Mock 页面。
+- 按业务能力拆分组件；播放器事件和重试逻辑由业务 Hook / 独立模块管理，展示组件不承载请求编排。
+- 跨组件共享状态和方法通过 Context 与业务 Hook 获取，不通过多层组件参数传递；Context 限定在业务范围，禁止成为全局杂物容器。
+- 高频播放状态放入 ref；Effect 必须清理事件、定时器及异步订阅。接口失败、会话冲突、媒体加载失败必须可见。
+- TypeScript 严格检查、前端测试、生产构建和浏览器验收通过后才能标记前端能力完成。
 
 ## 数据与一致性
 
