@@ -2,19 +2,23 @@ package com.knowledge.learning.note.service;
 
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.knowledge.api.learning.dto.PublishAgentCommentReplyDTO;
 import com.knowledge.common.exception.BusinessException;
 import com.knowledge.common.model.PageBO;
 import com.knowledge.learning.note.bo.NoteCommentBO;
 import com.knowledge.learning.note.converter.NoteEngagementConverter;
 import com.knowledge.learning.note.dao.mapper.NoteCommentMapper;
+import com.knowledge.learning.note.dao.mapper.NoteCommentLikeMapper;
 import com.knowledge.learning.note.dao.mapper.NoteMapper;
 import com.knowledge.learning.note.dao.model.NoteCommentDO;
 import com.knowledge.learning.note.dao.model.NoteDO;
 import com.knowledge.learning.note.dto.CreateNoteCommentDTO;
 import com.knowledge.learning.note.enums.NoteStatus;
+import com.knowledge.learning.note.enums.NoteCommentAuthorType;
 import java.time.Clock;
 import java.time.LocalDateTime;
 import java.util.Objects;
+import java.util.Set;
 import java.util.UUID;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -23,10 +27,16 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class NoteCommentService {
 
+    private static final String XIAOZHI_AUTHOR_ID = "agent-xiaozhi";
+
     @Autowired
     private NoteMapper noteMapper;
     @Autowired
     private NoteCommentMapper commentMapper;
+    @Autowired
+    private NoteCommentLikeMapper commentLikeMapper;
+    @Autowired
+    private AgentMentionOutboxService agentMentionOutboxService;
     @Autowired
     private Clock clock;
 
@@ -38,8 +48,11 @@ public class NoteCommentService {
                         .eq(NoteCommentDO::getNoteId, noteId)
                         .eq(NoteCommentDO::getDeleted, 0)
                         .orderByAsc(NoteCommentDO::getCreatedAt, NoteCommentDO::getId));
+        Set<String> likedCommentIds = userId == null || result.getRecords().isEmpty() ? Set.of()
+                : Set.copyOf(commentLikeMapper.selectLikedCommentIds(userId,
+                        result.getRecords().stream().map(NoteCommentDO::getId).toList()));
         return new PageBO<>(result.getRecords().stream()
-                .map(comment -> NoteEngagementConverter.toBO(comment, userId)).toList(),
+                .map(comment -> NoteEngagementConverter.toBO(comment, userId, likedCommentIds.contains(comment.getId()))).toList(),
                 pageNo, pageSize, result.getTotal());
     }
 
@@ -63,6 +76,7 @@ public class NoteCommentService {
         comment.setId(UUID.randomUUID().toString());
         comment.setNoteId(noteId);
         comment.setUserId(userId);
+        comment.setAuthorType(NoteCommentAuthorType.USER);
         comment.setParentCommentId(parentId);
         comment.setClientRequestId(clientRequestId);
         comment.setContent(content);
@@ -73,7 +87,47 @@ public class NoteCommentService {
         comment.setUpdatedAt(now);
         commentMapper.insert(comment);
         noteMapper.adjustCommentCount(noteId, 1);
+        if (mentionsXiaozhi(content)) {
+            agentMentionOutboxService.record(comment);
+        }
         return NoteEngagementConverter.toBO(comment, userId);
+    }
+
+    /** Called only through the authenticated Agent internal API. */
+    @Transactional
+    public NoteCommentBO publishAgentReply(PublishAgentCommentReplyDTO request) {
+        String sourceCommentId = request.sourceCommentId().trim();
+        String noteId = request.noteId().trim();
+        String content = request.content().trim();
+        requirePublic(noteMapper.selectActiveForUpdate(noteId));
+        NoteCommentDO source = commentMapper.selectById(sourceCommentId);
+        if (source == null || source.getDeleted() != 0 || !noteId.equals(source.getNoteId())) {
+            throw BusinessException.notFound("小智回复的来源评论不存在");
+        }
+        NoteCommentDO existing = commentMapper.findAgentReplyBySourceCommentId(sourceCommentId);
+        if (existing != null) {
+            if (existing.getDeleted() == 0 && existing.getContent().equals(content)) {
+                return NoteEngagementConverter.toBO(existing, XIAOZHI_AUTHOR_ID);
+            }
+            throw BusinessException.conflict("该评论的小智回复已存在");
+        }
+        NoteCommentDO reply = new NoteCommentDO();
+        reply.setId(UUID.randomUUID().toString());
+        reply.setNoteId(noteId);
+        reply.setUserId(XIAOZHI_AUTHOR_ID);
+        reply.setAuthorType(NoteCommentAuthorType.AGENT);
+        reply.setParentCommentId(source.getId());
+        reply.setSourceCommentId(sourceCommentId);
+        reply.setClientRequestId(request.clientRequestId().trim());
+        reply.setContent(content);
+        reply.setVersion(0);
+        reply.setDeleted(0);
+        LocalDateTime now = LocalDateTime.now(clock);
+        reply.setCreatedAt(now);
+        reply.setUpdatedAt(now);
+        commentMapper.insert(reply);
+        noteMapper.adjustCommentCount(noteId, 1);
+        return NoteEngagementConverter.toBO(reply, XIAOZHI_AUTHOR_ID);
     }
 
     @Transactional
@@ -99,6 +153,7 @@ public class NoteCommentService {
         if (commentMapper.softDelete(commentId, userId, version, LocalDateTime.now(clock)) != 1) {
             throw BusinessException.conflict("评论已被修改，请刷新后重试");
         }
+        commentLikeMapper.deleteByCommentId(commentId);
         noteMapper.adjustCommentCount(note.getId(), -1);
     }
 
@@ -107,9 +162,6 @@ public class NoteCommentService {
         NoteCommentDO parent = commentMapper.selectById(parentId);
         if (parent == null || parent.getDeleted() != 0 || !noteId.equals(parent.getNoteId())) {
             throw BusinessException.badRequest("回复的评论不存在或不属于当前 Note");
-        }
-        if (parent.getParentCommentId() != null) {
-            throw BusinessException.badRequest("当前仅支持一级评论回复");
         }
     }
 
@@ -128,5 +180,9 @@ public class NoteCommentService {
 
     private String normalizeNullable(String value) {
         return value == null || value.isBlank() ? null : value.trim();
+    }
+
+    private boolean mentionsXiaozhi(String content) {
+        return content.matches("(?s).*?(?<![A-Za-z0-9_])@小智(?![A-Za-z0-9_]).*");
     }
 }

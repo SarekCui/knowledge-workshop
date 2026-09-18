@@ -20,6 +20,9 @@ public class LearningRabbitConfiguration {
     public static final String PROGRESS_QUEUE = "learning.video-progress";
     public static final String PROGRESS_DEAD_QUEUE = "learning.video-progress.dlq";
     public static final String PROGRESS_ROUTING_KEY = "learning.video.progress-reported.v1";
+    public static final String AGENT_MENTION_QUEUE = "agent.mentioned.v1";
+    public static final String AGENT_MENTION_DEAD_QUEUE = "agent.mentioned.dlq";
+    public static final String AGENT_MENTION_ROUTING_KEY = "learning.note.agent-mentioned.v1";
 
     @Bean
     DirectExchange learningEventExchange() {
@@ -56,6 +59,18 @@ public class LearningRabbitConfiguration {
     }
 
     @Bean
+    Queue agentMentionQueue() {
+        return durableQueue(AGENT_MENTION_QUEUE, AGENT_MENTION_ROUTING_KEY);
+    }
+
+    @Bean
+    Binding agentMentionBinding(
+            @Qualifier("learningEventExchange") DirectExchange learningEventExchange,
+            @Qualifier("agentMentionQueue") Queue agentMentionQueue) {
+        return BindingBuilder.bind(agentMentionQueue).to(learningEventExchange).with(AGENT_MENTION_ROUTING_KEY);
+    }
+
+    @Bean
     Queue learningGroupFormedDeadQueue() {
         return QueueBuilder.durable(GROUP_FORMED_DEAD_QUEUE).build();
     }
@@ -79,6 +94,19 @@ public class LearningRabbitConfiguration {
             @Qualifier("learningProgressDeadQueue") Queue learningProgressDeadQueue) {
         return BindingBuilder.bind(learningProgressDeadQueue)
                 .to(learningDeadLetterExchange).with(PROGRESS_ROUTING_KEY);
+    }
+
+    @Bean
+    Queue agentMentionDeadQueue() {
+        return QueueBuilder.durable(AGENT_MENTION_DEAD_QUEUE).build();
+    }
+
+    @Bean
+    Binding agentMentionDeadBinding(
+            @Qualifier("learningDeadLetterExchange") DirectExchange learningDeadLetterExchange,
+            @Qualifier("agentMentionDeadQueue") Queue agentMentionDeadQueue) {
+        return BindingBuilder.bind(agentMentionDeadQueue)
+                .to(learningDeadLetterExchange).with(AGENT_MENTION_ROUTING_KEY);
     }
 
     private Queue durableQueue(String queueName, String routingKey) {

@@ -73,6 +73,9 @@ knowledge:
   learning:
     note-image:
       cleanup-delay: ${NOTE_IMAGE_CLEANUP_DELAY:1h}
+    agent-mention:
+      dispatch-delay: ${AGENT_MENTION_DISPATCH_DELAY:5000}
+      confirm-timeout-ms: ${AGENT_MENTION_CONFIRM_TIMEOUT_MS:5000}
   security:
     jwt:
       secret: ${JWT_SECRET}
