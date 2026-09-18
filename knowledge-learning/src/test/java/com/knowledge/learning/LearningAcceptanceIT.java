@@ -6,6 +6,8 @@ import static org.awaitility.Awaitility.await;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.knowledge.api.learning.dto.AgentMentionedEventDTO;
+import com.knowledge.api.learning.dto.PublishAgentCommentReplyDTO;
 import com.knowledge.api.learning.dto.PlayedRangeEventDTO;
 import com.knowledge.api.learning.dto.VideoProgressReportedEventDTO;
 import com.knowledge.api.marketing.dto.GroupFormedEventDTO;
@@ -24,7 +26,9 @@ import com.knowledge.learning.note.enums.NoteStatus;
 import com.knowledge.learning.note.enums.NoteSort;
 import com.knowledge.learning.note.dto.CreateNoteCommentDTO;
 import com.knowledge.learning.note.service.NoteCommentService;
+import com.knowledge.learning.note.service.NoteCommentLikeService;
 import com.knowledge.learning.note.service.NoteEngagementService;
+import com.knowledge.learning.note.service.AgentMentionOutboxService;
 import com.knowledge.learning.progress.bo.PlaybackSessionBO;
 import com.knowledge.learning.progress.bo.VideoProgressBO;
 import com.knowledge.learning.progress.dto.PlayedRangeDTO;
@@ -82,6 +86,7 @@ import org.testcontainers.utility.DockerImageName;
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT, properties = {
         "spring.cloud.nacos.discovery.enabled=false",
         "knowledge.storage.enabled=false",
+        "knowledge.learning.agent-mention.dispatch-delay=1h",
         "spring.rabbitmq.listener.simple.retry.initial-interval=10ms",
         "spring.rabbitmq.listener.simple.retry.max-interval=20ms"
 })
@@ -125,6 +130,12 @@ class LearningAcceptanceIT {
 
     @Autowired
     NoteCommentService noteCommentService;
+
+    @Autowired
+    NoteCommentLikeService noteCommentLikeService;
+
+    @Autowired
+    AgentMentionOutboxService agentMentionOutboxService;
 
     @Autowired
     NoteImageMapper noteImageMapper;
@@ -278,11 +289,15 @@ class LearningAcceptanceIT {
         rabbitAdmin.purgeQueue(LearningRabbitConfiguration.PROGRESS_QUEUE, true);
         rabbitAdmin.purgeQueue(LearningRabbitConfiguration.GROUP_FORMED_DEAD_QUEUE, true);
         rabbitAdmin.purgeQueue(LearningRabbitConfiguration.PROGRESS_DEAD_QUEUE, true);
+        rabbitAdmin.purgeQueue(LearningRabbitConfiguration.AGENT_MENTION_QUEUE, true);
+        rabbitAdmin.purgeQueue(LearningRabbitConfiguration.AGENT_MENTION_DEAD_QUEUE, true);
         jdbcTemplate.update("DELETE FROM progress_event_inbox");
         jdbcTemplate.update("DELETE FROM watched_segment");
         jdbcTemplate.update("DELETE FROM video_progress");
         jdbcTemplate.update("DELETE FROM message_inbox");
         jdbcTemplate.update("DELETE FROM course_entitlement");
+        jdbcTemplate.update("DELETE FROM agent_mention_outbox");
+        jdbcTemplate.update("DELETE FROM note_comment_like");
         jdbcTemplate.update("DELETE FROM note_comment");
         jdbcTemplate.update("DELETE FROM note_favorite");
         jdbcTemplate.update("DELETE FROM note_like");
@@ -409,14 +424,27 @@ class LearningAcceptanceIT {
                 new CreateNoteCommentDTO("comment-1", null, "第一条评论"));
         assertThat(noteCommentService.create("user-a", published.id(),
                 new CreateNoteCommentDTO("comment-1", null, "第一条评论")).id()).isEqualTo(comment.id());
+        assertThat(noteCommentLikeService.like("user-b", comment.id()))
+                .extracting("likeCount", "liked").containsExactly(1L, true);
+        assertThat(noteCommentLikeService.like("user-b", comment.id()))
+                .extracting("likeCount", "liked").containsExactly(1L, true);
+        assertThat(noteCommentService.page("user-b", published.id(), 1, 20).items())
+                .filteredOn(item -> item.id().equals(comment.id())).singleElement()
+                .extracting("likeCount", "liked").containsExactly(1L, true);
+        assertThat(noteCommentLikeService.unlike("user-b", comment.id()))
+                .extracting("likeCount", "liked").containsExactly(0L, false);
+        assertThat(noteCommentLikeService.unlike("user-b", comment.id()))
+                .extracting("likeCount", "liked").containsExactly(0L, false);
         var reply = noteCommentService.create("user-b", published.id(),
                 new CreateNoteCommentDTO("comment-2", comment.id(), "一级回复"));
-        assertThat(noteCommentService.page("user-a", published.id(), 1, 20).total()).isEqualTo(2);
-        assertThatThrownBy(() -> noteCommentService.create("user-a", published.id(),
-                new CreateNoteCommentDTO("comment-3", reply.id(), "禁止二级嵌套")))
-                .isInstanceOf(BusinessException.class).hasMessageContaining("一级");
+        var nestedReply = noteCommentService.create("user-a", published.id(),
+                new CreateNoteCommentDTO("comment-3", reply.id(), "二级回复"));
+        assertThat(noteCommentService.page("user-a", published.id(), 1, 20).total()).isEqualTo(3);
         assertThatThrownBy(() -> noteCommentService.delete("user-a", comment.id(), 0))
                 .isInstanceOf(BusinessException.class).hasMessageContaining("已有回复");
+        assertThatThrownBy(() -> noteCommentService.delete("user-b", reply.id(), 0))
+                .isInstanceOf(BusinessException.class).hasMessageContaining("已有回复");
+        noteCommentService.delete("user-a", nestedReply.id(), 0);
         noteCommentService.delete("user-b", reply.id(), 0);
         noteCommentService.delete("user-a", comment.id(), 0);
 
@@ -426,6 +454,66 @@ class LearningAcceptanceIT {
         assertThat(noteEngagementService.get("user-a", published.id()))
                 .extracting("likeCount", "favoriteCount", "commentCount", "liked", "favorited")
                 .containsExactly(0L, 0L, 0L, false, false);
+    }
+
+    @Test
+    void publicCommentMentionCreatesOneOutboxEventAndDispatchesToRabbitMq() throws Exception {
+        var draft = noteService.create("user-b", new CreateNoteDTO(
+                "agent-mention-note", null, null, "小智答疑", "公开笔记正文", null));
+        var published = noteService.changeStatus("user-b", draft.id(),
+                new ChangeNoteStatusDTO(NoteStatus.PUBLIC, 0));
+
+        noteCommentService.create("user-a", published.id(),
+                new CreateNoteCommentDTO("regular-comment", null, "普通评论，不触发 AI"));
+        assertThat(count("SELECT COUNT(*) FROM agent_mention_outbox")).isZero();
+
+        var comment = noteCommentService.create("user-a", published.id(),
+                new CreateNoteCommentDTO("agent-comment", null, "请 @小智 解释这段笔记"));
+        assertThat(noteCommentService.create("user-a", published.id(),
+                new CreateNoteCommentDTO("agent-comment", null, "请 @小智 解释这段笔记")).id())
+                .isEqualTo(comment.id());
+        assertThat(count("SELECT COUNT(*) FROM agent_mention_outbox")).isEqualTo(1);
+
+        String payload = jdbcTemplate.queryForObject("SELECT payload FROM agent_mention_outbox", String.class);
+        AgentMentionedEventDTO event = objectMapper.readValue(payload, AgentMentionedEventDTO.class);
+        assertThat(event.eventType()).isEqualTo("AgentMentioned");
+        assertThat(event.aggregateId()).isEqualTo(comment.id());
+        assertThat(event.noteId()).isEqualTo(published.id());
+        assertThat(event.commentId()).isEqualTo(comment.id());
+        assertThat(event.requesterId()).isEqualTo("user-a");
+
+        assertThat(agentMentionOutboxService.dispatchBatch(10)).isEqualTo(1);
+        await().atMost(Duration.ofSeconds(5)).untilAsserted(() ->
+                assertThat(rabbitAdmin.getQueueInfo(LearningRabbitConfiguration.AGENT_MENTION_QUEUE)
+                        .getMessageCount()).isEqualTo(1));
+        assertThat(jdbcTemplate.queryForObject("SELECT status FROM agent_mention_outbox", String.class))
+                .isEqualTo("SENT");
+    }
+
+    @Test
+    void agentReplyIsMarkedAndIdempotentBySourceComment() {
+        var draft = noteService.create("user-b", new CreateNoteDTO(
+                "agent-reply-note", null, null, "小智回复", "公开笔记正文", null));
+        var published = noteService.changeStatus("user-b", draft.id(),
+                new ChangeNoteStatusDTO(NoteStatus.PUBLIC, 0));
+        var source = noteCommentService.create("user-a", published.id(),
+                new CreateNoteCommentDTO("agent-reply-source", null, "请解释这个概念"));
+
+        var request = new PublishAgentCommentReplyDTO("AGENT_COMMENT_REPLY:" + source.id(), published.id(),
+                source.id(), "这是小智的解释。");
+        var reply = noteCommentService.publishAgentReply(request);
+        assertThat(noteCommentService.publishAgentReply(request).id()).isEqualTo(reply.id());
+        assertThat(reply).extracting("authorId", "authorType", "sourceCommentId", "owned")
+                .containsExactly("agent-xiaozhi", com.knowledge.learning.note.enums.NoteCommentAuthorType.AGENT,
+                        source.id(), true);
+        assertThat(noteCommentService.page("user-a", published.id(), 1, 20).items())
+                .filteredOn(comment -> comment.id().equals(reply.id()))
+                .singleElement()
+                .extracting("authorType", "sourceCommentId")
+                .containsExactly(com.knowledge.learning.note.enums.NoteCommentAuthorType.AGENT, source.id());
+        assertThatThrownBy(() -> noteCommentService.publishAgentReply(new PublishAgentCommentReplyDTO(
+                "AGENT_COMMENT_REPLY:" + source.id(), published.id(), source.id(), "不同内容")))
+                .isInstanceOf(BusinessException.class);
     }
 
     @Test
