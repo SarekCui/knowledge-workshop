@@ -12,5 +12,6 @@ export function useAuth() {
   if (!session) throw new Error('useAuth 必须位于 AuthProvider 内');
   const snapshot = useSyncExternalStore(session.subscribe, session.getSnapshot, session.getSnapshot);
   return { ...snapshot, login: session.login, logout: session.logout, restore: session.restore,
-    apiRequest: session.apiRequest, optionalAuthRequest: session.optionalAuthRequest };
+    apiRequest: session.apiRequest, agentStreamRequest: session.agentStreamRequest,
+    optionalAuthRequest: session.optionalAuthRequest };
 }

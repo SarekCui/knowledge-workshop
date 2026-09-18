@@ -5,8 +5,23 @@ import type { NoteTransport } from './NoteStore';
 import { NoteBrowseStore } from './NoteBrowseStore';
 
 const engagement: NoteEngagement = { likeCount: 2, favoriteCount: 1, commentCount: 0, liked: false, favorited: false };
-const comment: NoteComment = { id: 'comment-1', noteId: 'note-1', authorId: 'user-1', parentCommentId: null,
-  content: '很有帮助', owned: true, version: 0, createdAt: '', updatedAt: '' };
+const comment: NoteComment = { id: 'comment-1', noteId: 'note-1', authorId: 'user-1', authorType: 'USER', parentCommentId: null,
+  content: '很有帮助', likeCount: 0, liked: false, owned: true, version: 0, createdAt: '', updatedAt: '' };
+
+it('评论点赞乐观更新，失败时恢复原状态', async () => {
+  const transport = vi.fn()
+    .mockResolvedValueOnce(engagement)
+    .mockResolvedValueOnce({ items: [comment], pageNo: 1, pageSize: 50, total: 1 })
+    .mockRejectedValueOnce(new Error('网络失败'));
+  const store = new NoteInteractionStore('note-1', transport);
+  await store.load();
+  transport.mockClear();
+
+  await store.toggleCommentLike(comment.id);
+
+  expect(transport).toHaveBeenCalledWith('/api/learning/notes/comments/comment-1/likes', undefined, { method: 'PUT' });
+  expect(store.getSnapshot().comments[0]).toMatchObject({ liked: false, likeCount: 0 });
+});
 
 it('首屏并行加载互动状态和评论', async () => {
   const transport = vi.fn(path => Promise.resolve(path.endsWith('/engagement') ? engagement
@@ -89,4 +104,38 @@ it('明确的参数错误允许修正并换新UUID', async () => {
   store.setInput('新内容'); await store.submitComment();
   expect(transport.mock.calls[0][1]).toMatchObject({ clientRequestId: 'request-1', content: '旧内容' });
   expect(transport.mock.calls[1][1]).toMatchObject({ clientRequestId: 'request-2', content: '新内容' });
+});
+
+it('回复评论时携带被回复评论 ID，并在成功后关闭内联回复框', async () => {
+  const reply = { ...comment, id: 'reply-1', parentCommentId: 'comment-1', content: '谢谢你的反馈' };
+  const transport = vi.fn().mockResolvedValue(reply);
+  const store = new NoteInteractionStore('note-1', transport, () => 'reply-request-1');
+  store.replyTo('comment-1');
+  store.setInput('谢谢你的反馈');
+
+  await store.submitComment();
+
+  expect(transport).toHaveBeenCalledWith('/api/learning/notes/public/note-1/comments', {
+    clientRequestId: 'reply-request-1', parentCommentId: 'comment-1', content: '谢谢你的反馈',
+  });
+  expect(store.getSnapshot()).toMatchObject({ parentCommentId: null, replyInput: '', commentLocked: false });
+});
+
+it('打开回复框后保留主评论草稿，并与回复草稿分开编辑', async () => {
+  const transport = vi.fn().mockResolvedValue(comment);
+  const store = new NoteInteractionStore('note-1', transport, () => 'root-request-1');
+  store.setInput('主评论草稿');
+  store.replyTo('comment-1');
+  store.setInput('回复草稿');
+
+  expect(store.getSnapshot()).toMatchObject({
+    input: '主评论草稿', replyInput: '回复草稿', parentCommentId: 'comment-1',
+  });
+
+  await store.submitRootComment();
+
+  expect(transport).toHaveBeenCalledWith('/api/learning/notes/public/note-1/comments', {
+    clientRequestId: 'root-request-1', parentCommentId: null, content: '主评论草稿',
+  });
+  expect(store.getSnapshot()).toMatchObject({ input: '', replyInput: '回复草稿', parentCommentId: 'comment-1' });
 });

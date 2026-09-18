@@ -25,6 +25,7 @@ import { CourseCatalogProvider } from './catalog/CourseCatalogContext';
 import { CourseCatalogPage } from './catalog/CourseCatalogPage';
 import { CourseCatalogDetailPage } from './catalog/CourseCatalogDetailPage';
 import { MainNavigation } from './navigation/MainNavigation';
+import { AgentDrawer } from './agent/AgentDrawer';
 
 function NoteBrowseRoute({ collection = 'public' }: { collection?: NoteCollection }) {
   const location = useLocation();
@@ -102,8 +103,8 @@ export function App() {
       <Route path="/courses/:courseId" element={<CourseCatalogRoute />} />
       <Route element={<AuthBoundary />}>
         <Route path="/notes/mine" element={<MyNotesPage />} />
-        <Route path="/notes/liked" element={<NoteBrowseRoute collection="liked" />} />
-        <Route path="/notes/favorites" element={<NoteBrowseRoute collection="favorites" />} />
+        <Route path="/notes/liked" element={<MyNotesPage />} />
+        <Route path="/notes/favorites" element={<MyNotesPage />} />
         <Route path="/account" element={<AccountPage />} />
         <Route path="/points" element={<PointsProvider><PointsPage /></PointsProvider>} />
         <Route element={<LearningBoundary />}>
@@ -117,5 +118,6 @@ export function App() {
       </Route>
       <Route path="*" element={<Result status="404" title="页面不存在" extra={<Link to="/learning">返回我的学习</Link>} />} />
     </Routes></Layout.Content>
+    <AgentDrawer />
   </Layout>;
 }

@@ -6,7 +6,7 @@ import type { NoteTransport } from './NoteStore';
 
 const Context = createContext<NoteInteractionStore | null>(null);
 
-export function NoteInteractionProvider({ children }: { children: ReactNode }) {
+export function NoteInteractionProvider({ children, noteAuthorId }: { children: ReactNode; noteAuthorId?: string }) {
   const { noteId } = useParams();
   const { apiRequest, optionalAuthRequest } = useAuth();
   if (!noteId) throw new Error('笔记互动必须位于详情路由内');
@@ -15,6 +15,7 @@ export function NoteInteractionProvider({ children }: { children: ReactNode }) {
     return readOnly ? optionalAuthRequest(path, body, options) : apiRequest(path, body, options);
   }, [apiRequest, optionalAuthRequest]);
   const [store] = useState(() => new NoteInteractionStore(noteId, transport, undefined, optionalAuthRequest));
+  useEffect(() => { store.noteAuthorId = noteAuthorId ?? ''; }, [store, noteAuthorId]);
   useEffect(() => { void store.load(); return store.cancel; }, [store]);
   return <Context.Provider value={store}>{children}</Context.Provider>;
 }

@@ -13,9 +13,7 @@ export function AccountMenu() {
   const name = profile?.nickname ?? profile?.username ?? '我的账号';
   const items: MenuProps['items'] = [
     { key: 'learning', label: <Link to="/learning">我的课程</Link> },
-    { key: 'notes', label: <Link to="/notes/mine">我的笔记</Link> },
-    { key: 'liked', label: <Link to="/notes/liked">我的点赞</Link> },
-    { key: 'favorites', label: <Link to="/notes/favorites">我的收藏</Link> },
+    { key: 'notes', label: <Link to="/notes/mine">我的内容</Link> },
     { type: 'divider' },
     { key: 'orders', label: <Link to="/orders">我的订单</Link> },
     { key: 'points', label: <Link to="/points">签到积分</Link> },

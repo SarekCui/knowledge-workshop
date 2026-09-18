@@ -1,4 +1,4 @@
-import { ApiError, request, type RequestOptions } from '../api';
+import { ApiError, request, requestStream, type RequestOptions } from '../api';
 
 interface AccessToken { accessToken: string; expiresIn: number }
 export interface AuthSnapshot {
@@ -86,6 +86,18 @@ export class AuthSession {
       if (generation !== this.generation) throw new ApiError(401, '登录会话已变化');
       return data;
     }
+  };
+  agentStreamRequest = async (path: string, body: unknown, signal: AbortSignal): Promise<Response> => {
+    const generation = this.generation;
+    if (!this.accessToken) throw new ApiError(401, '请登录后继续');
+    if (Date.now() >= this.expiresAt - 30000) await this.refresh();
+    if (generation !== this.generation || !this.accessToken) throw new ApiError(401, '登录会话已变化');
+    const usedToken = this.accessToken;
+    const response = await requestStream(path, usedToken, body, signal);
+    if (response.status !== 401 || generation !== this.generation) return response;
+    if (this.accessToken === usedToken) await this.refresh();
+    if (generation !== this.generation || !this.accessToken) throw new ApiError(401, '请重新登录');
+    return requestStream(path, this.accessToken, body, signal);
   };
   optionalAuthRequest = async <T>(path: string, body?: unknown, options?: RequestOptions): Promise<T> => {
     if (this.snapshot.status === 'restoring') await this.refresh().catch(() => {});
