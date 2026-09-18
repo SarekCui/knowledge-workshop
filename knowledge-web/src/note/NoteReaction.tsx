@@ -1,4 +1,5 @@
 import { Button } from 'antd';
+import { CommentOutlined } from '@ant-design/icons';
 
 type ReactionKind = 'like' | 'favorite' | 'comment';
 
@@ -11,10 +12,7 @@ function ReactionIcon({ kind, active = false }: { kind: ReactionKind; active?: b
     <path d="m12 3.4 2.65 5.37 5.93.86-4.29 4.18 1.02 5.9L12 16.92l-5.31 2.79 1.02-5.9-4.29-4.18 5.93-.86Z"
       fill={active ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round" />
   </svg>;
-  return <svg viewBox="0 0 24 24" aria-hidden="true">
-    <path d="M5.5 5.5h13v9h-7L7 18v-3.5H5.5Z" fill="none" stroke="currentColor"
-      strokeWidth="1.8" strokeLinejoin="round" />
-  </svg>;
+  return <CommentOutlined aria-hidden="true" />;
 }
 
 export function NoteReactionButton({ kind, active, count, disabled, busy, onClick }: {
@@ -42,4 +40,21 @@ export function NoteReactionStat({ kind, count, active = false }: { kind: Reacti
     <span className="note-reaction-icon"><ReactionIcon kind={kind} active={active} /></span>
     <span aria-hidden="true">{count}</span>
   </span>;
+}
+
+export function NoteReactionStatButton({ kind, count, active = false, disabled, busy, onClick }: {
+  kind: Exclude<ReactionKind, 'comment'>;
+  count: number;
+  active?: boolean;
+  disabled?: boolean;
+  busy?: boolean;
+  onClick: () => void;
+}) {
+  const label = active ? '取消点赞' : '点赞';
+  return <Button type="text" className={`note-reaction-stat-button is-${kind}${active ? ' is-active' : ''}`}
+    aria-label={`${label}，当前 ${count}`} aria-pressed={active} aria-busy={busy}
+    disabled={disabled} onClick={onClick}>
+    <span className="note-reaction-icon"><ReactionIcon kind={kind} active={active} /></span>
+    <span aria-hidden="true">{count}</span>
+  </Button>;
 }

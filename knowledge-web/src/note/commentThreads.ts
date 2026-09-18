@@ -1,21 +1,27 @@
 import type { NoteComment } from './NoteInteractionStore';
 
 export interface NoteCommentThread {
-  root: NoteComment;
-  replies: NoteComment[];
+  root: NoteCommentNode;
+}
+
+export interface NoteCommentNode {
+  comment: NoteComment;
+  replies: NoteCommentNode[];
 }
 
 export function buildCommentThreads(comments: NoteComment[]): NoteCommentThread[] {
-  const roots = comments.filter(comment => comment.parentCommentId === null);
-  const repliesByParent = new Map<string, NoteComment[]>();
-  comments.filter(comment => comment.parentCommentId !== null).forEach(comment => {
-    const replies = repliesByParent.get(comment.parentCommentId!) ?? [];
-    replies.push(comment);
-    repliesByParent.set(comment.parentCommentId!, replies);
+  const nodesById = new Map(comments.map(comment => [comment.id, { comment, replies: [] as NoteCommentNode[] }]));
+  const threads: NoteCommentThread[] = [];
+
+  comments.forEach(comment => {
+    const node = nodesById.get(comment.id)!;
+    const parent = comment.parentCommentId ? nodesById.get(comment.parentCommentId) : undefined;
+    if (parent) {
+      parent.replies.push(node);
+    } else {
+      // 当前页未包含父评论时，仍保证这条回复可见；跨页不会伪造不完整的祖先链。
+      threads.push({ root: node });
+    }
   });
-  const threads = roots.map(root => ({ root, replies: repliesByParent.get(root.id) ?? [] }));
-  const visibleIds = new Set(roots.map(comment => comment.id));
-  comments.filter(comment => comment.parentCommentId !== null && !visibleIds.has(comment.parentCommentId!))
-    .forEach(reply => threads.push({ root: reply, replies: [] }));
   return threads;
 }
