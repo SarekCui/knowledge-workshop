@@ -123,6 +123,22 @@ spring:
                       factor: 2
                       basedOnPreviousValue: false
                     timeout: 500ms
+            - id: agent
+              uri: ${AGENT_URI:lb://knowledge-agent}
+              predicates:
+                - Path=/api/agent/**
+              metadata:
+                response-timeout: 35_000
+              filters:
+                - name: CircuitBreaker
+                  args:
+                    name: agentGateway
+                    fallbackUri: forward:/internal/gateway/fallback/agent
+                    statusCodes: INTERNAL_SERVER_ERROR,BAD_GATEWAY,SERVICE_UNAVAILABLE,GATEWAY_TIMEOUT
+                - name: Bulkhead
+                  args:
+                    name: agentGateway
+                    maxConcurrentCalls: 20
 
 resilience4j:
   circuitbreaker:
@@ -144,6 +160,8 @@ resilience4j:
         baseConfig: gateway-default
       learningGateway:
         baseConfig: gateway-default
+      agentGateway:
+        baseConfig: gateway-default
   timelimiter:
     configs:
       gateway-default:
@@ -158,6 +176,9 @@ resilience4j:
         baseConfig: gateway-default
       learningGateway:
         baseConfig: gateway-default
+      agentGateway:
+        timeoutDuration: 35s
+        cancelRunningFuture: true
 
 management:
   endpoints:

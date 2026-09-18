@@ -1,0 +1,6 @@
+# Copy this file to application-local.yml, then set DEEPSEEK_API_KEY below.
+knowledge:
+  agent:
+    model:
+      enabled: true
+      api-key: ""

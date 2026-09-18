@@ -27,6 +27,7 @@
         <module>knowledge-marketing</module>
         <module>knowledge-points</module>
         <module>knowledge-learning</module>
+        <module>knowledge-agent</module>
         <module>knowledge-gateway</module>
     </modules>
 
@@ -40,6 +41,7 @@
         <testcontainers.version>1.21.4</testcontainers.version>
         <springdoc.version>2.8.15</springdoc.version>
         <minio.version>9.0.1</minio.version>
+        <langchain4j.version>1.18.1</langchain4j.version>
         <maven.compiler.release>${java.version}</maven.compiler.release>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>

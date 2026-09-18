@@ -1,9 +1,9 @@
 # 小智 AI Agent 初步设计
 
-- 状态：讨论稿
+- 状态：开发中（无 RAG 问答原型与右侧学习端已落地，完整能力未验收）
 - 日期：2026-09-17
-- 对应轮次：5.8（规划中）
-- 相关决策：`docs/adr/0014-xiaozhi-agent-service.md`
+- 对应轮次：5.8（开发中）
+- 相关决策：`docs/adr/0014-xiaozhi-agent-service.md`、`docs/adr/0015-agent-run-dispatch-and-recovery.md`
 
 ## 1. 目标
 
@@ -57,17 +57,19 @@ flowchart LR
 
     Learning --> LearningDB[(learning_db)]
     LearningDB -->|AgentMentioned Outbox| MQ[(RabbitMQ)]
-    MQ -->|至少一次投递| Agent
+    MQ -->|提及事件，至少一次投递| Agent
 
     Agent -->|内部 API| Learning
     Agent -->|后续只读诊断工具| Marketing[knowledge-marketing]
     Agent -->|后续只读查询工具| Points[knowledge-points]
     Agent --> Model[模型供应商]
-    Agent --> Vector[(向量存储，选型待定)]
+    Agent --> Vector[(Qdrant 公共向量索引)]
     Agent --> AgentDB[(agent_db)]
-    Agent --> Redis[(Redis)]
-
-    Agent -->|幂等发布 AI 回复| Learning
+    AgentDB -->|AgentRunRequested Outbox| MQ
+    MQ -->|执行队列| Worker[Agent Worker]
+    Worker --> AgentDB
+    Worker --> Model
+    Worker -->|幂等发布 AI 回复| Learning
 ```
 
 ## 4. 服务内部结构
@@ -78,6 +80,7 @@ flowchart LR
 com.knowledge.agent
 ├── conversation  # 私人会话、消息和 SSE
 ├── mention       # @小智事件消费与公开回复
+├── run           # 持久化状态机、执行分发、租约与恢复
 ├── retrieval     # 检索、权限过滤和引用组装
 ├── tool          # 有场景白名单的业务工具
 ├── model         # LangChain4j 适配和模型端口
@@ -159,20 +162,30 @@ sequenceDiagram
     actor U as 用户
     participant L as Learning
     participant DB as learning_db
-    participant Q as RabbitMQ
+    participant EQ as Event Queue
     participant A as Agent
+    participant AD as agent_db
+    participant RQ as Run Queue
+    participant W as Agent Worker
     participant M as Model
 
     U->>L: 发布包含 @小智 的评论
     L->>DB: 同事务写评论与 Outbox
     L-->>U: 评论发布成功
-    L->>Q: AgentMentioned
-    Q->>A: 至少一次投递
-    A->>A: eventId 幂等
-    A->>L: 获取公开 Note 与评论上下文
-    A->>M: 生成公开回答
-    A->>L: 使用幂等键发布 AI 回复
+    L->>EQ: Publisher Confirm 投递 AgentMentioned
+    EQ->>A: 至少一次投递
+    A->>AD: 同事务写 Inbox、Run 与执行 Outbox
+    A-->>EQ: ACK
+    AD->>RQ: Publisher Confirm 投递 AgentRunRequested
+    RQ->>W: 竞争消费，手动 ACK
+    W->>AD: 条件抢占、租约与 Fencing Token
+    W->>L: 获取并校验公开 Note 与评论上下文
+    W->>M: 生成公开回答
+    W->>AD: 持久化回答并进入 PUBLISH 阶段
+    W->>L: 使用幂等键发布 AI 回复
     L->>DB: 保存标记为 AI 的评论
+    W->>AD: 标记 SUCCEEDED
+    W-->>RQ: ACK
 ```
 
 事件仅携带稳定 ID，不携带完整 Note 正文，避免消息过大、过期快照及私人内容泄漏。建议事件字段为：
@@ -182,7 +195,7 @@ eventId, eventType, occurredAt, aggregateId, version,
 noteId, commentId, parentCommentId, requesterId
 ```
 
-AI 回复使用 `AGENT_COMMENT_REPLY:{sourceCommentId}` 作为业务幂等键，并由数据库唯一索引兜底。失败进入有限重试，超过上限进入死信和可观测失败状态；不能影响用户原评论提交。
+AI 回复使用 `AGENT_COMMENT_REPLY:{sourceCommentId}` 作为业务幂等键，并由数据库唯一索引兜底。运行生命周期状态与执行阶段分开保存：状态为 `PENDING/RUNNING/RETRY_WAIT/SUCCEEDED/DEAD` 等，评论执行阶段为 `CONTEXT/GENERATE/PUBLISH`。模型结果在进入 `PUBLISH` 前先持久化，发布失败只重试发布，不重新调用模型。可恢复失败进入有界退避，超过上限进入死信和可观测 `DEAD` 状态；任何失败都不能影响用户原评论提交。
 
 ## 7. 工具与权限模型
 
@@ -225,7 +238,9 @@ courseId, chapterId, visibility, ownerId,
 contentHash, updatedAt
 ```
 
-检索后仍需执行可见性校验。向量数据库、Embedding 模型、切分策略、混合检索与重排方案均为待验证项，不在本文提前定案。
+首期向量存储确定为 Qdrant，仅承载公共资料的稠密向量检索与元数据过滤；不是课程、Note 等业务事实源。以 `sourceType:sourceId:sourceVersion:chunkNo` 构造稳定业务分块键，再生成确定性 UUID 作为 Qdrant Point ID，原始分块键保存在 payload 中。内容更新使用幂等 upsert，删除事件删除对应分块。只为实际过滤字段创建 payload 索引，首批包括 `sourceType`、`sourceId`、`sourceVersion`、`courseId`、`chapterId`、`visibility` 与 `updatedAt`，最终以查询计划和评估集验证结果为准。
+
+检索后仍需执行可见性校验。Embedding 采用阿里云百炼 `text-embedding-v4`，固定 1024 维；资料索引使用 `document` 类型、用户问题使用 `query` 类型。Markdown/章节语义切分参数、混合检索与重排方案均为待验证项；首期采用稠密向量 TopK 召回加元数据过滤，不提前引入 Elasticsearch、BM25 或 Reranker。
 
 ## 9. 数据模型草案
 
@@ -235,23 +250,29 @@ contentHash, updatedAt
 |---|---|---|
 | `agent_conversation` | 会话与所属用户 | 用户只能访问自己的会话 |
 | `agent_message` | 用户/助手消息 | `(conversation_id, client_request_id)` 唯一 |
-| `agent_run` | 单次同步或异步运行 | 评论场景按来源评论唯一 |
+| `agent_run` | 单次同步或异步运行、生命周期状态、阶段检查点、租约与执行版本 | 评论场景按来源评论唯一；状态迁移使用条件更新 |
+| `agent_execution_outbox` | 将持久化 Run 可靠投递到执行队列 | `run_id` 与执行代次唯一 |
 | `agent_tool_call` | 工具、耗时与结果摘要 | 不保存令牌和非必要敏感参数 |
 | `agent_citation` | 回答引用与来源版本 | 可追溯到业务资源 |
-| `consumed_event` | MQ 消费幂等 | `(event_id, consumer)` 唯一 |
+| `agent_event_inbox` | MQ 消费幂等 | `(event_id, consumer)` 唯一 |
 
 完整消息与运行记录以 MySQL 为事实源；LangChain4j Chat Memory 只负责挑选本轮模型上下文，不作为聊天历史事实源。
 
 ## 10. 并发、超时与失败恢复
 
 - 同一 `conversationId` 同时只允许一个生成任务，避免 LangChain4j Chat Memory 并发损坏和回答交错。
-- 会话锁 Key 初步采用 `kw:agent:conversation:lock:{conversationId}`；Redis 不是运行状态事实源。
+- MySQL `agent_run` 是运行事实源，RabbitMQ 执行队列负责唤醒、削峰和多实例分发；不使用 Redis 锁决定任务所有权。
+- Worker 通过数据库条件更新领取任务，记录 `leaseOwner`、`leaseUntil` 和递增的 `executionVersion`；所有阶段写入使用该版本作为 Fencing Token。
+- 生产执行队列使用 Quorum Queue、持久化消息、Publisher Confirm、手动 ACK、有限 Prefetch 和 DLQ；RabbitMQ 4.1 使用 TTL 重试队列加 DLX 实现延迟退避。
+- 生命周期状态按 `PENDING -> RUNNING -> SUCCEEDED` 推进，可恢复失败进入 `RETRY_WAIT`，不可恢复或超过上限进入 `DEAD`；评论执行阶段按 `CONTEXT -> GENERATE -> PUBLISH` 推进，回答在进入 `PUBLISH` 前持久化。
+- 模型、Embedding 和内部 HTTP 调用必须在数据库短事务之外；抢占、检查点和条件状态迁移使用短事务。
+- 低频 Reconciliation Job 恢复租约过期、长期未投递及已有持久化回答但未发布的运行。
 - 同步问答超时后不透明重新生成，避免重复计费和非确定结果。
-- 评论 Agent 依赖消息重试、消费幂等和发布评论幂等恢复。
+- 评论 Agent 依赖执行消息重投、消费幂等、运行状态机和发布评论幂等共同恢复，不能只依赖 Broker。
 - 模型调用成功但持久化失败时，运行必须进入可识别的失败状态，不得把未审计回答标记为完成。
-- SSE 断开不等同于模型任务必然取消；取消、继续执行及计费语义后续单独确认。
+- SSE 断开只结束传输，不自动把模型运行标记为失败；显式取消或模型总超时才终止运行。
 
-初始预算仅作为原型起点，需经测试调整：
+首期运行边界如下，需经测试调整：
 
 | 环节 | 初始预算 |
 |---|---:|
@@ -259,7 +280,9 @@ contentHash, updatedAt
 | RAG 检索 | 2 秒 |
 | 首 Token | 10 秒 |
 | 单次模型总运行 | 30 秒 |
-| 单轮工具调用 | 最多 5 次 |
+| 单轮工具调用 | 最多 3 次 |
+| 最大输入 / 输出 Token | 6,000 / 1,200 |
+| 单次 / 单用户每日成本上限 | 0.05 元 / 2 元 |
 
 ## 11. 安全与治理
 
@@ -286,24 +309,21 @@ contentHash, updatedAt
 
 ## 13. 分阶段落地
 
-1. 建立 ADR、契约和威胁模型，确定模型与向量存储选型。
-2. 创建 `knowledge-agent`、独立 schema、运行审计和模型适配层。
-3. 实现无工具的右侧流式问答，验证 SSE、超时、取消和持久化。
-4. 接入公开课程与 PUBLIC Note 的带引用检索。
-5. 接入经过鉴权的个人进度与个人 Note 只读工具。
-6. 实现评论 `@小智` Outbox、MQ、幂等消费和 AI 回复。
+1. 建立内部契约与威胁模型；已确定 DeepSeek `deepseek-flash`、百炼 `text-embedding-v4`（1024 维）和 Qdrant。
+2. 修复内部上下文资源校验和模型关闭时的服务启动，建立可执行的集成测试入口。
+3. 创建统一 Run 状态机、执行 Outbox、RabbitMQ 执行队列、租约/Fencing Token、阶段重试和对账恢复。
+4. 解耦 SSE 传输与模型运行，补齐超时、取消、最终结果查询和多轮 Memory。
+5. 建立公开资料索引事件、语义切分、Qdrant upsert/delete 和带来源回答。
+6. 接入经过鉴权的个人进度与个人 Note 只读工具，并按场景限制最多 3 次工具调用。
 7. 增加内容安全、限流、成本控制、指标和故障演练。
 8. 经用户确认后开放创建 Note 草稿，其他写工具继续后置。
 
 ## 14. 待确认问题
 
-- 模型供应商、模型名称、兼容协议与预算上限。
-- Embedding 模型及向量存储选型，是否先使用已有 MySQL 能力完成关键词检索原型。
+- 是否在固定评估集证明确有必要后引入关键词混合检索和 Reranker。
 - 课程字幕或正文的来源、版权和更新机制。
-- SSE 断开后的取消与结果保留语义。
-- 对话和审计数据保留周期及用户删除策略。
 - 评论区频率限制、单线程最大追问次数和失败展示方式。
 - 引用粒度、答案质量评估集和上线阈值。
 - `@小智` 解析规则、同名用户冲突与历史评论兼容方式。
 
-本文是方向性初稿，不代表能力已经实现或验收。上述待确认项在编码前继续收敛，并在对应 ADR 或后续设计文档中记录最终决策。
+本文固化实现决策及正在开发的边界，不代表完整能力已经实现或验收。当前已有无 RAG 流式问答、会话历史、评论 Outbox/消费幂等和实际回复原型；MySQL 状态机 + RabbitMQ 执行队列仍是待实现的目标方案。跨服务接口、事件字段和失败语义见 `docs/20-xiaozhi-agent-contract-and-prototype-plan.md`。

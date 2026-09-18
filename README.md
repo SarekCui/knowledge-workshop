@@ -81,8 +81,14 @@ java -jar knowledge-iam/target/knowledge-iam-0.1.0-SNAPSHOT.jar
 java -jar knowledge-marketing/target/knowledge-marketing-0.1.0-SNAPSHOT.jar
 java -jar knowledge-points/target/knowledge-points-0.1.0-SNAPSHOT.jar
 java -jar knowledge-learning/target/knowledge-learning-0.1.0-SNAPSHOT.jar
+SPRING_PROFILES_ACTIVE=local java -jar knowledge-agent/target/knowledge-agent-0.1.0-SNAPSHOT.jar
 java -jar knowledge-gateway/target/knowledge-gateway-0.1.0-SNAPSHOT.jar
 ```
+
+小智的 DeepSeek 配置仅保存在被 Git 忽略的
+`knowledge-agent/src/main/resources/application-local.yml`；可从
+`application-local.example.yml` 复制创建。`scripts/start-local.sh` 会仅为 Agent
+启用该 `local` Profile，并与其他本地服务共享同一次启动生成的 JWT 密钥。
 
 也可以在完成打包后使用统一脚本启动或停止全部业务服务与前端。脚本只在进程内生成本次启动共用的临时JWT密钥，不输出或写入密钥：
 
