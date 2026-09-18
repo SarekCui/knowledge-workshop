@@ -6,6 +6,7 @@ target/
 .DS_Store
 *.log
 .env
+knowledge-agent/src/main/resources/application-local.yml
 data/
 logs/
 node_modules/

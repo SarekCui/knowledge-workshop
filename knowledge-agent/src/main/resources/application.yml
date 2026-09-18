@@ -1,0 +1,69 @@
+server:
+  port: 8087
+
+spring:
+  application:
+    name: knowledge-agent
+  cloud:
+    nacos:
+      discovery:
+        enabled: ${NACOS_DISCOVERY_ENABLED:true}
+        server-addr: ${NACOS_SERVER_ADDR:127.0.0.1:8848}
+        namespace: ${NACOS_NAMESPACE:public}
+        group: ${NACOS_GROUP:DEFAULT_GROUP}
+  datasource:
+    url: ${AGENT_DB_URL:jdbc:mysql://localhost:3307/knowledge_agent?useUnicode=true&characterEncoding=utf8&serverTimezone=UTC}
+    username: ${AGENT_DB_USERNAME:root}
+    password: ${AGENT_DB_PASSWORD:root}
+  rabbitmq:
+    connection-timeout: 5s
+    host: ${RABBITMQ_HOST:localhost}
+    port: ${RABBITMQ_PORT:5672}
+    username: ${RABBITMQ_USERNAME:knowledge}
+    password: ${RABBITMQ_PASSWORD:knowledge}
+    listener:
+      simple:
+        acknowledge-mode: auto
+        default-requeue-rejected: false
+        retry:
+          enabled: true
+          max-attempts: 3
+          initial-interval: 1s
+          multiplier: 2
+          max-interval: 5s
+  flyway:
+    enabled: true
+
+mybatis-plus:
+  configuration:
+    map-underscore-to-camel-case: true
+  global-config:
+    banner: false
+
+knowledge:
+  agent:
+    model:
+      enabled: ${AGENT_MODEL_ENABLED:false}
+      base-url: ${DEEPSEEK_BASE_URL:https://api.deepseek.com/v1}
+      api-key: ${DEEPSEEK_API_KEY:}
+      name: ${DEEPSEEK_MODEL:deepseek-flash}
+      timeout-seconds: ${AGENT_MODEL_TIMEOUT_SECONDS:30}
+      max-output-tokens: ${AGENT_MODEL_MAX_OUTPUT_TOKENS:1200}
+  security:
+    jwt:
+      secret: ${JWT_SECRET}
+      issuer: knowledge-iam
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+
+logging:
+  structured:
+    format:
+      console: logstash
+    json:
+      add:
+        service: ${spring.application.name}

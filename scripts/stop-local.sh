@@ -4,7 +4,7 @@ set -euo pipefail
 runtime_dir="/private/tmp/knowledge-workshop"
 stopped=0
 
-for service in web gateway learning points marketing iam; do
+for service in web gateway agent learning points marketing iam; do
   pid_file="$runtime_dir/$service.pid"
   [[ -f "$pid_file" ]] || continue
   pid="$(<"$pid_file")"

@@ -1,8 +1,8 @@
 # ADR-0014：小智 Agent 独立服务与首期交互边界
 
-- 状态：提议
+- 状态：已接受
 - 日期：2026-09-17
-- 决策人：项目维护者（待确认）
+- 决策人：项目维护者
 
 ## 背景
 
@@ -12,7 +12,7 @@
 
 ## 决策
 
-- 提议新增 Java 17 + Spring Boot 服务 `knowledge-agent`，基础包使用 `com.knowledge.agent`。
+- 新增 Java 17 + Spring Boot 服务 `knowledge-agent`，基础包使用 `com.knowledge.agent`。
 - 使用 LangChain4j 作为首选 Agent 编排框架；业务层通过项目自定义的 `AgentModelService` 端口隔离框架类型。
 - Agent 服务拥有独立 `agent_db`，保存会话、消息、运行、工具调用摘要、回答引用、Prompt/模型版本、Token 用量及消费幂等记录。
 - 课程、Note、评论、进度、订单、积分、权益和用户资料继续归原服务所有；Agent 通过受鉴权内部 API 或事件访问，禁止跨服务访问数据库。
@@ -21,7 +21,12 @@
 - 私人问答与公开评论使用不同工具白名单。公开评论只能访问公开资料，不得访问提问者私人 Note、进度、订单或积分。
 - MySQL 中的完整消息和运行记录是事实源；LangChain4j Chat Memory 只用于模型上下文窗口。同一会话首期串行生成。
 - 首期写工具仅考虑“经用户确认创建 Note 草稿”，不开放交易、权益、积分或发布内容等高风险写操作。
-- 向量存储、Embedding 模型、切分与重排策略在原型验证后另行确认；本 ADR 不提前绑定具体实现。
+- 公共资料向量存储采用 Qdrant，仅存储已发布课程、章节、PUBLIC Note 与平台帮助文档的稠密向量和检索元数据；课程、Note 等业务事实仍归 learning 所有。索引分块使用 `sourceType:sourceId:sourceVersion:chunkNo` 稳定 ID，并依据内容更新/删除事件幂等 upsert 或删除。
+- 首期采用稠密向量 TopK 召回与 metadata 过滤；Embedding 模型、语义切分参数、关键词混合检索与 Reranker 由固定评估集验证后再确定，不提前引入 Elasticsearch 或 Milvus。
+- 生成模型采用 DeepSeek `deepseek-flash`，通过 OpenAI 兼容 Chat Completions 协议和 LangChain4j 适配；首期固定非思考模式，Tool Calling 可用但每次运行最多执行 3 次只读工具调用，不输出或持久化模型思维链。
+- Embedding 采用阿里云百炼 `text-embedding-v4`，维度固定为 1024；资料入库使用 `document` 检索任务类型，用户提问使用 `query` 类型。生成模型与 Embedding API Key 独立配置和轮换。
+- 单次运行最多发送 6,000 输入 Token、生成 1,200 输出 Token；单用户每小时最多 10 次右侧问答，评论 `@小智` 每位用户每小时最多 5 次，达到模型或本地预算上限时稳定拒绝且不自动重试生成。初始单次预算上限为 0.05 元、单用户每日上限为 2 元，实际成本以供应商返回 Token 用量核算。
+- 本地完整消息保留 90 天；运行、用量、引用和错误审计保留 180 天；工具调用只保留资源 ID、耗时、结果摘要哈希与状态 30 天，不保存完整私人内容。用户删除会话时立即删除消息与引用，并匿名化仍需保留的聚合用量；外部模型调用仅发送本轮必需的最小上下文。
 
 ## 备选方案
 

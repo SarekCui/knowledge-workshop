@@ -4,8 +4,8 @@ set -euo pipefail
 project_dir="$(cd "$(dirname "$0")/.." && pwd)"
 runtime_dir="/private/tmp/knowledge-workshop"
 java_home_value="${JAVA_HOME:-/Library/Java/JavaVirtualMachines/jdk-17.jdk/Contents/Home}"
-ports=(8083 8081 8082 8084 8080 5173)
-services=(iam marketing points learning gateway web)
+ports=(8083 8081 8082 8084 8087 8080 5173)
+services=(iam marketing points learning agent gateway web)
 
 cleanup() {
   trap - EXIT INT TERM
@@ -29,7 +29,7 @@ for port in "${ports[@]}"; do
   fi
 done
 
-for jar in knowledge-iam knowledge-marketing knowledge-points knowledge-learning knowledge-gateway; do
+for jar in knowledge-iam knowledge-marketing knowledge-points knowledge-learning knowledge-agent knowledge-gateway; do
   if [[ ! -f "$project_dir/$jar/target/$jar-0.1.0-SNAPSHOT.jar" ]]; then
     echo "启动失败: 缺少 $jar 构建产物，请先执行 mvn package -DskipTests。" >&2
     exit 1
@@ -42,11 +42,16 @@ jwt_secret="$(openssl rand -hex 32)"
 start_java() {
   local service="$1"
   local module="knowledge-$service"
+  local profile=()
+  if [[ "$service" == "agent" ]]; then
+    profile=(SPRING_PROFILES_ACTIVE=local)
+  fi
   env \
     JAVA_HOME="$java_home_value" \
     PATH="$java_home_value/bin:$PATH" \
     JWT_SECRET="$jwt_secret" \
     WEB_AUTH_COOKIE_SECURE=false \
+    ${profile[@]+"${profile[@]}"} \
     "$java_home_value/bin/java" -jar "$project_dir/$module/target/$module-0.1.0-SNAPSHOT.jar" \
     >"$runtime_dir/$service.log" 2>&1 &
   echo "$!" >"$runtime_dir/$service.pid"
@@ -56,6 +61,7 @@ start_java iam
 start_java marketing
 start_java points
 start_java learning
+start_java agent
 start_java gateway
 
 (
