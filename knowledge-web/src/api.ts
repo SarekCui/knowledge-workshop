@@ -25,6 +25,16 @@ export async function request<T>(path: string, token?: string, body?: unknown, o
   return result.data as T;
 }
 
+export function requestStream(path: string, token: string, body: unknown, signal: AbortSignal): Promise<Response> {
+  return fetch(path, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json', Accept: 'text/event-stream' },
+    body: JSON.stringify(body),
+    credentials: 'same-origin',
+    signal,
+  });
+}
+
 export interface TokenPair { accessToken: string; refreshToken: string }
 export interface Course {
   courseId: string; title: string; completionRate: number;

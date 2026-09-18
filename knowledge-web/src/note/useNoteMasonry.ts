@@ -11,7 +11,7 @@ export function useNoteMasonry(items: unknown) {
       const width = root.clientWidth;
       if (!width) return;
       const gap = 20;
-      const count = Math.max(1, Math.min(4, Math.floor((width + gap) / 280)));
+      const count = Math.max(1, Math.min(5, Math.floor((width + gap) / 240)));
       const cardWidth = (width - (count - 1) * gap) / count;
       const cards = Array.from(root.children) as HTMLElement[];
       cards.forEach(card => { card.style.width = `${cardWidth}px`; });
