@@ -28,11 +28,12 @@ Note返回追加authorId/status/publishedAt；不返回clientRequestId、播放U
 
 ## 第三批互动设计
 
-- 点赞、收藏分别以`(note_id,user_id)`唯一约束作为业务幂等键。`PUT`重复调用返回当前状态，`DELETE`重复调用同样成功，不要求客户端额外生成UUID。
+- 笔记点赞、收藏分别以`(note_id,user_id)`唯一约束作为业务幂等键；评论与回复点赞以`(comment_id,user_id)`唯一约束作为业务幂等键。`PUT`重复调用返回当前状态，`DELETE`重复调用同样成功，不要求客户端额外生成UUID。
 - 评论创建使用客户端UUID `clientRequestId`，唯一键为`(user_id,client_request_id)`；相同Key绑定相同note、父评论和正文，不同请求指纹返回409。
-- 评论支持一级回复引用，`parentCommentId`必须指向同一篇仍有效的评论；首版按创建时间正序分页，不构造无限嵌套树。
+- 评论可回复任一层仍有效的同篇评论，`parentCommentId`必须指向同一篇仍有效的评论。接口按创建时间正序返回有界扁平分页，前端只在当前页构建树；父评论不在当前页时，该回复独立展示，不伪造跨页祖先链。
+- 评论列表返回每条评论的`likeCount`和当前用户`liked`状态；当前页的点赞状态批量查询，避免按评论逐条查询。前端按每个直接子树独立展开/收起，默认折叠已有回复；点击“回复”时自动展开对应节点。评论与回复正文超过六行左右的实际渲染高度时以渐隐效果折叠，用户可展开全文或收起；阈值根据元素实际高度响应式计算，不按字符数截断。
 - 互动只允许作用于未删除的PUBLIC笔记。撤回后保留既有互动事实，重新发布后恢复展示；删除笔记后公开入口不可访问互动。
-- `note`保存like/favorite/comment计数冗余字段，互动事实表和计数在同一个MySQL事务内更新；计数使用行锁串行化笔记级写入，并以唯一约束保证并发正确性。
+- `note`保存like/favorite/comment计数冗余字段；`note_comment`保存评论点赞计数。互动事实表和对应计数在同一个MySQL事务内更新；笔记级互动使用笔记行锁，评论点赞使用笔记后评论的固定锁顺序，并以唯一约束保证并发正确性。删除无有效直接回复的评论时同步删除其点赞事实；有直接回复的评论不能删除。
 - 热门排序只使用真实数据，首版确定性顺序为收藏数、点赞数、评论数、发布时间、ID倒序。此口径不是推荐算法，不宣称具备反作弊能力。
 - 当前不使用Redis缓存互动计数。数据规模与压测证明MySQL成为瓶颈后，再设计缓存失效、重建和对账，不提前引入双写。
 
@@ -43,12 +44,13 @@ Note返回追加authorId/status/publishedAt；不返回clientRequestId、播放U
 | 收藏/取消 | PUT/DELETE /api/learning/notes/public/{noteId}/favorites | 自然业务键幂等 |
 | 评论列表 | GET /api/learning/notes/public/{noteId}/comments | pageNo 1—1000，pageSize 1—50 |
 | 创建评论/回复 | POST /api/learning/notes/public/{noteId}/comments | UUID幂等，正文1—1000字符 |
+| 评论/回复点赞 | PUT/DELETE /api/learning/notes/comments/{commentId}/likes | 自然业务键幂等，仅PUBLIC Note下有效评论 |
 | 删除本人评论 | DELETE /api/learning/notes/comments/{commentId}?version= | 软删除与乐观锁 |
 | 我的点赞/收藏 | GET /api/learning/notes/liked、/favorites | 仅返回仍公开的笔记 |
 
 ## 后续范围
 
-- 已交付文字笔记首页卡片流、详情、我的笔记、创作与发布，以及点赞、收藏、一级评论回复、我的点赞/收藏和真实热门排序。
+- 已交付文字笔记首页卡片流、详情、我的笔记、创作与发布，以及点赞、收藏、多层评论回复、评论/回复点赞、按节点展开/收起和长评论渐隐展开、我的点赞/收藏和真实热门排序。
 - 图片上传须先明确对象存储、访问授权、格式/大小限制和内容治理后再实现，不把文件塞进数据库。
 - 举报、审核、反作弊和推荐算法后置；完成这些治理前不宣称可直接开放互联网生产流量。
 - 当前不拆新微服务，继续按业务域分包；互联网生产开放需补齐公开内容治理。

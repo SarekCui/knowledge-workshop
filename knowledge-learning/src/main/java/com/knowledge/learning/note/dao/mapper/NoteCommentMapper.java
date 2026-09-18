@@ -17,6 +17,9 @@ public interface NoteCommentMapper extends BaseMapper<NoteCommentDO> {
     NoteCommentDO findByRequest(@Param("userId") String userId,
                                 @Param("clientRequestId") String clientRequestId);
 
+    @Select("SELECT * FROM note_comment WHERE source_comment_id = #{sourceCommentId} LIMIT 1")
+    NoteCommentDO findAgentReplyBySourceCommentId(@Param("sourceCommentId") String sourceCommentId);
+
     @Select("SELECT * FROM note_comment WHERE id = #{id} FOR UPDATE")
     NoteCommentDO selectForUpdate(@Param("id") String id);
 
@@ -28,6 +31,13 @@ public interface NoteCommentMapper extends BaseMapper<NoteCommentDO> {
     int softDelete(@Param("id") String id, @Param("userId") String userId,
                    @Param("version") int version, @Param("updatedAt") LocalDateTime updatedAt);
 
+    @Update("""
+            UPDATE note_comment SET like_count = GREATEST(0, like_count + #{delta})
+             WHERE id = #{id} AND deleted = 0
+            """)
+    int adjustLikeCount(@Param("id") String id, @Param("delta") int delta);
+
     @Select("SELECT COUNT(*) FROM note_comment WHERE parent_comment_id = #{parentId} AND deleted = 0")
     long countActiveReplies(@Param("parentId") String parentId);
+
 }

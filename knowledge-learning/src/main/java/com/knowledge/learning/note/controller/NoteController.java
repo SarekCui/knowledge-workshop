@@ -13,6 +13,7 @@ import com.knowledge.learning.note.dto.RenameNoteDTO;
 import com.knowledge.learning.note.dto.UpdateNoteDTO;
 import com.knowledge.learning.note.enums.NoteSort;
 import com.knowledge.learning.note.service.NoteCommentService;
+import com.knowledge.learning.note.service.NoteCommentLikeService;
 import com.knowledge.learning.note.service.NoteEngagementService;
 import com.knowledge.learning.note.service.NoteQueryService;
 import com.knowledge.learning.note.service.NoteService;
@@ -53,6 +54,8 @@ public class NoteController {
     private NoteEngagementService engagementService;
     @Autowired
     private NoteCommentService commentService;
+    @Autowired
+    private NoteCommentLikeService commentLikeService;
 
     @GetMapping("/public")
     public Result<PageVO<NoteVO>> publicPage(@RequestParam(required = false) @Size(max = 64) String courseId,
@@ -136,6 +139,18 @@ public class NoteController {
     public Result<NoteCommentVO> comment(@PathVariable String noteId,
             @Valid @RequestBody CreateNoteCommentDTO body, HttpServletRequest request) {
         return Result.ok(NoteEngagementConverter.toVO(commentService.create(UserContext.getUserId(), noteId, body)),
+                requestId(request));
+    }
+
+    @PutMapping("/comments/{commentId}/likes")
+    public Result<NoteCommentVO> likeComment(@PathVariable String commentId, HttpServletRequest request) {
+        return Result.ok(NoteEngagementConverter.toVO(commentLikeService.like(UserContext.getUserId(), commentId)),
+                requestId(request));
+    }
+
+    @DeleteMapping("/comments/{commentId}/likes")
+    public Result<NoteCommentVO> unlikeComment(@PathVariable String commentId, HttpServletRequest request) {
+        return Result.ok(NoteEngagementConverter.toVO(commentLikeService.unlike(UserContext.getUserId(), commentId)),
                 requestId(request));
     }
 
