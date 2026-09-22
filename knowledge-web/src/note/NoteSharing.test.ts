@@ -50,7 +50,7 @@ it('独立创作默认无课程，首次未知结果锁定UUID与内容', async 
   store.create(); store.edit('title', '知识分享'); store.edit('content', '正文'); await store.save();
   store.selectCourse('course-1'); await store.save();
   expect(transport.mock.calls[0][1]).toEqual(transport.mock.calls[1][1]);
-  expect(transport.mock.calls[0][1]).toMatchObject({ courseId: null, clientRequestId: 'uuid-1' });
+  expect(transport.mock.calls[0][1]).toMatchObject({ courseId: null, idempotencyKey: 'web:note-create:uuid-1' });
 });
 it('课程选择进入创建参数，发布带版本并刷新本人分页', async () => {
   const transport = vi.fn().mockResolvedValueOnce({ ...note, courseId: 'course-1' })

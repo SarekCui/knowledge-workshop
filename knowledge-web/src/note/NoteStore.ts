@@ -11,7 +11,7 @@ export interface Note {
 export interface NoteDraft {
   mode: 'create' | 'edit' | 'rename'; title: string; content: string;
   tags: string[];
-  original?: Note; clientRequestId?: string; locked: boolean; conflict: boolean;
+  original?: Note; idempotencyKey?: string; locked: boolean; conflict: boolean;
   courseId?: string | null;
 }
 interface Snapshot {
@@ -95,7 +95,7 @@ export class NoteStore {
   }
   create = () => {
     if (this.snapshot.busy || this.snapshot.draft || this.snapshot.status === 'loading') return;
-    this.publish({ draft: { mode: 'create', title: '', content: '', tags: [], courseId: this.courseId, clientRequestId: this.uuid(), locked: false, conflict: false }, error: '', notice: '' });
+    this.publish({ draft: { mode: 'create', title: '', content: '', tags: [], courseId: this.courseId, idempotencyKey: `web:note-create:${this.uuid()}`, locked: false, conflict: false }, error: '', notice: '' });
   };
   open = (id: string, mode: 'edit' | 'rename' = 'edit') => this.perform(async () => {
     const note = await this.transport<Note>(`/api/learning/notes/${encodeURIComponent(id)}`);
@@ -166,7 +166,7 @@ export class NoteStore {
       if (draft.mode === 'create') {
         this.publish({ draft: { ...draft, locked: true } });
         note = await this.transport<Note>('/api/learning/notes', {
-          clientRequestId: draft.clientRequestId, courseId: draft.courseId ?? this.courseId,
+          idempotencyKey: draft.idempotencyKey, courseId: draft.courseId ?? this.courseId,
           title: draft.title, content: draft.content, chapterId: null, videoPositionMs: null, tags: draft.tags,
         });
       } else {
@@ -183,7 +183,7 @@ export class NoteStore {
         throw new Error('Note 已被其他设备修改。草稿已保留，请复制需要的内容，或放弃草稿后重新打开最新版本。');
       }
       if (draft.mode === 'create' && !draft.locked && error instanceof ApiError && error.status === 400) {
-        this.publish({ draft: { ...draft, locked: false, clientRequestId: this.uuid() } });
+        this.publish({ draft: { ...draft, locked: false, idempotencyKey: `web:note-create:${this.uuid()}` } });
         throw error;
       }
       if (draft.mode === 'create') throw new Error(`创建结果未确认，已锁定本次内容；重试会复用原幂等键。${this.message(error)}`);

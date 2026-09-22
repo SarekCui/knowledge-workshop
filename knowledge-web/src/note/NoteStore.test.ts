@@ -35,8 +35,8 @@ describe('Note 工作区', () => {
     expect(store.getSnapshot().draft?.locked).toBe(false);
     store.edit('title', '新名称'); await store.save();
     expect(transport.mock.calls[1][1]).toMatchObject({ title: '新名称' });
-    expect(transport.mock.calls[0][1]).toMatchObject({ clientRequestId: 'uuid-1' });
-    expect(transport.mock.calls[1][1]).toMatchObject({ clientRequestId: 'uuid-2' });
+    expect(transport.mock.calls[0][1]).toMatchObject({ idempotencyKey: 'web:note-create:uuid-1' });
+    expect(transport.mock.calls[1][1]).toMatchObject({ idempotencyKey: 'web:note-create:uuid-2' });
     expect(store.getSnapshot().error).toContain('参数不合法');
   });
   it('已有未知创建结果时，后续400也不能解锁或更换幂等键', async () => {
@@ -46,7 +46,7 @@ describe('Note 工作区', () => {
       throw new ApiError(400, '请求被拒绝');
     });
     store.create(); store.edit('title', '保留'); await store.save(); await store.save();
-    expect(store.getSnapshot().draft).toMatchObject({ locked: true, clientRequestId: 'fixed-uuid' });
+    expect(store.getSnapshot().draft).toMatchObject({ locked: true, idempotencyKey: 'web:note-create:fixed-uuid' });
     expect(transport.mock.calls[0]).toEqual(transport.mock.calls[1]);
   });
   it('搜索状态下重命名后回查；刷新失败不伪装保存失败', async () => {
@@ -86,7 +86,7 @@ describe('Note 工作区', () => {
     expect(store.getSnapshot().draft).toMatchObject({ locked: true, title: '想法' });
     await store.save();
     expect(transport.mock.calls[0]).toEqual(transport.mock.calls[1]);
-    expect(transport.mock.calls[1][1]).toMatchObject({ clientRequestId: 'fixed-uuid', videoPositionMs: null });
+    expect(transport.mock.calls[1][1]).toMatchObject({ idempotencyKey: 'web:note-create:fixed-uuid', videoPositionMs: null });
     expect(store.getSnapshot()).toMatchObject({ notes: [note], draft: undefined, status: 'success' });
   });
   it('打开读取最新版本，编辑PUT携带版本并更新列表', async () => {

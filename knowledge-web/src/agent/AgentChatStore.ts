@@ -48,7 +48,7 @@ export interface AgentChatTransport {
   listConversations(): Promise<ConversationSummary[]>;
   loadMessages(conversationId: string): Promise<HistoryMessage[]>;
   deleteConversation(conversationId: string): Promise<void>;
-  stream(conversationId: string, request: { clientRequestId: string; question: string; pageContext: string },
+  stream(conversationId: string, request: { idempotencyKey: string; question: string; pageContext: string },
     signal: AbortSignal, onEvent: (event: AgentStreamEvent) => void): Promise<void>;
 }
 
@@ -90,7 +90,7 @@ export class AgentChatStore {
       const controller = new AbortController();
       this.controller = controller;
       this.publish({ conversationId, status: 'streaming' });
-      await this.transport.stream(conversationId, { clientRequestId: requestId, question: content, pageContext }, controller.signal,
+      await this.transport.stream(conversationId, { idempotencyKey: `web:chat-send:${requestId}`, question: content, pageContext }, controller.signal,
         event => this.consumeEvent(assistantMessage.id, event));
       if (this.snapshot.status !== 'error') {
         this.finalizeAssistant(assistantMessage.id, { status: 'completed' }, startedAt);

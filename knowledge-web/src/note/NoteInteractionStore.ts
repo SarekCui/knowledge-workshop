@@ -162,7 +162,7 @@ export class NoteInteractionStore {
     this.commentRequest ??= { id: this.uuid(), parentCommentId, content };
     try {
       const comment = await this.transport<NoteComment>(`${this.publicPath()}/comments`, {
-        clientRequestId: this.commentRequest.id,
+        idempotencyKey: `web:comment-create:${this.commentRequest.id}`,
         parentCommentId: this.commentRequest.parentCommentId,
         content: this.commentRequest.content,
       });
