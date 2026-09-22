@@ -21,23 +21,17 @@ import com.knowledge.marketing.groupbuy.enums.TradeOrderStatus;
 import java.time.Clock;
 import java.time.LocalDateTime;
 import java.util.function.Function;
+import jakarta.annotation.Resource;
 import org.springframework.stereotype.Service;
 
 @Service
 public class GroupBuyQueryService {
 
-    private final GroupActivityMapper activityMapper;
-    private final GroupOrderMapper groupMapper;
-    private final TradeOrderMapper orderMapper;
-    private final Clock clock;
+    @Resource private GroupActivityMapper activityMapper;
+    @Resource private GroupOrderMapper groupMapper;
+    @Resource private TradeOrderMapper orderMapper;
+    @Resource private Clock clock;
 
-    public GroupBuyQueryService(GroupActivityMapper activityMapper, GroupOrderMapper groupMapper,
-                                TradeOrderMapper orderMapper, Clock clock) {
-        this.activityMapper = activityMapper;
-        this.groupMapper = groupMapper;
-        this.orderMapper = orderMapper;
-        this.clock = clock;
-    }
 
     public PageBO<GroupActivityBO> listAvailableActivities(int pageNo, int pageSize) {
         LocalDateTime now = LocalDateTime.now(clock);

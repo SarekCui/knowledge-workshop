@@ -21,6 +21,7 @@
 - 服务先按业务域分包，再采用 `{domain}/controller/service/dao/mapper/model/dto/bo/vo/converter/config/mq/job/rule/enums` 的传统分层；DO 位于 `{domain}/dao/model`，Mapper 位于 `{domain}/dao/mapper`，不创建 `domain/application/interfaces/infrastructure` DDD 分层。
 - Controller 不开启事务、不写 SQL、不直接操作 Redis/MQ；Service 定义事务边界；Mapper 只做数据访问。
 - 持久化对象使用 `DO` 后缀，不得越过 Service 暴露给 Controller；接口输入使用 DTO，Service 业务结果使用 BO，Controller 输出使用 VO。四类对象严格分离并通过手写 Converter 转换。
+- 业务 Spring Bean 的依赖统一使用 `@Resource` 注入；同类型多 Bean 时按显式 Bean 名称消歧。配置属性继续使用 `@Value` 或 `@ConfigurationProperties`；可选能力优先使用条件装配和 Noop 实现，确有运行时重配置需求时使用明确的 Setter 注入。`@Bean` 使用方法参数注入；禁止业务组件使用 `@Autowired` 和 `ObjectProvider` 延迟查找。
 
 ## 3. API 约束
 

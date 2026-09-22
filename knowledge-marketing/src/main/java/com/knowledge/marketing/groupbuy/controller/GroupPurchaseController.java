@@ -15,6 +15,7 @@ import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
+import jakarta.annotation.Resource;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -26,23 +27,17 @@ import org.springframework.web.bind.annotation.RestController;
 @Tag(name = "知识付费拼团", description = "参加拼团及模拟支付接口")
 public class GroupPurchaseController {
 
-    private final GroupPurchaseService purchaseService;
-    private final PaymentSettlementService settlementService;
+    @Resource private GroupPurchaseService purchaseService;
+    @Resource private PaymentSettlementService settlementService;
 
-    public GroupPurchaseController(GroupPurchaseService purchaseService,
-                                   PaymentSettlementService settlementService) {
-        this.purchaseService = purchaseService;
-        this.settlementService = settlementService;
-    }
 
     @PostMapping("/groups/{groupId}/join")
     @Operation(summary = "参加拼团", description = "同一用户重复加入同一团时返回已有订单")
-    public Result<TradeOrderVO> join(
-                                     @Parameter(description = "团实例 ID", example = "group-demo", required = true)
+    public Result<TradeOrderVO> join(@Parameter(description = "团实例 ID", example = "group-demo", required = true)
                                      @PathVariable String groupId,
                                      @Parameter(hidden = true) HttpServletRequest servletRequest) {
-        return Result.ok(GroupBuyConverter.toVO(
-                purchaseService.join(new JoinGroupBO(groupId, UserContext.getUserId()))),
+        return Result.ok(
+                GroupBuyConverter.toVO(purchaseService.join(new JoinGroupBO(groupId, UserContext.getUserId()))),
                 requestId(servletRequest));
     }
 

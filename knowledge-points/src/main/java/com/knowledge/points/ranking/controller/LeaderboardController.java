@@ -13,6 +13,7 @@ import java.util.List;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.Pattern;
+import jakarta.annotation.Resource;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -24,11 +25,8 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/api/points/leaderboard")
 @Tag(name = "赛季排行榜", description = "查询 Redis 实时赛季积分榜")
 public class LeaderboardController {
-    private final LeaderboardService leaderboardService;
+    @Resource private LeaderboardService leaderboardService;
 
-    public LeaderboardController(LeaderboardService leaderboardService) {
-        this.leaderboardService = leaderboardService;
-    }
 
     @GetMapping
     @Operation(summary = "查询赛季排行榜", description = "按积分倒序返回排行榜，limit 会被限制在 1 到 1000")

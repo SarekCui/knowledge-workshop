@@ -5,15 +5,15 @@ import com.knowledge.points.season.bo.SeasonBO;
 import com.knowledge.points.season.dao.mapper.SeasonMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
+import jakarta.annotation.Resource;
 import org.springframework.stereotype.Service;
 
 @Service
 public class SeasonSettlementService {
     private static final Logger LOGGER = LoggerFactory.getLogger(SeasonSettlementService.class);
-    @Autowired
+    @Resource
     private SeasonSettlementTransactionService transactionService;
-    @Autowired
+    @Resource
     private SeasonMapper seasonMapper;
 
     public SeasonBO settle(String season) {

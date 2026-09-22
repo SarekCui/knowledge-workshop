@@ -14,7 +14,7 @@
 - Java 基础包必须使用 `com.knowledge`，服务代码位于 `com.knowledge.{service}`；不得使用个人标识作为包路径。
 - 服务包先按业务域拆分，再在域内使用传统分层：`{domain}.controller -> {domain}.service -> {domain}.dao.mapper`；数据库映射对象位于 `{domain}.dao.model`，辅助目录为 `dto`、`bo`、`vo`、`converter`、`config`、`mq`、`job`、`rule`、`enums`。
 - Controller 只负责协议转换、参数校验和调用 Service；不得承载事务与核心业务判断。
-- 新增和修改业务组件使用 `@Autowired` 字段注入；基础设施 `@Bean` 保留方法参数注入，同类型多 Bean 无法消歧时再使用 `@Qualifier`。
+- 业务 Spring Bean 的依赖统一使用 `@Resource` 注入；同类型多 Bean 时按显式 Bean 名称消歧。配置属性继续使用 `@Value` 或 `@ConfigurationProperties`，基础设施 `@Bean` 保留方法参数注入；可选能力优先使用条件装配和 Noop 实现。
 - Service 负责业务编排和事务边界；复杂校验拆到 `rule` 责任链，通用技术能力拆到独立 Starter。
 - Mapper 只负责数据访问，不得调用远程服务、MQ 或 Redis。
 - 持久化对象统一使用 `DO` 后缀，接口输入和跨服务传输对象统一使用 `DTO` 后缀，Service 业务结果统一使用 `BO` 后缀，Controller 对外展示对象统一使用 `VO` 后缀。

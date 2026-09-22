@@ -14,24 +14,24 @@ import java.time.ZoneOffset;
 import java.util.UUID;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.beans.factory.annotation.Autowired;
+import jakarta.annotation.Resource;
 import com.knowledge.points.season.service.SeasonWriteService;
 import com.knowledge.points.season.service.SeasonClosedException;
 
 @Service
 public class PointGrantTransactionService {
 
-    @Autowired
+    @Resource
     private PointLedgerMapper ledgerMapper;
-    @Autowired
+    @Resource
     private PointAccountMapper accountMapper;
-    @Autowired
+    @Resource
     private QuarterTableRouter tableRouter;
-    @Autowired
+    @Resource
     private Clock clock;
-    @Autowired
+    @Resource
     private SeasonAccountMapper seasonAccountMapper;
-    @Autowired
+    @Resource
     private SeasonWriteService seasonWriteService;
 
     @Transactional

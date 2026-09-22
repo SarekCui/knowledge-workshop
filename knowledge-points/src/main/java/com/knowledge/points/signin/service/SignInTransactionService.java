@@ -9,22 +9,17 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.UUID;
+import jakarta.annotation.Resource;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class SignInTransactionService {
 
-    private final SignInRecordMapper recordMapper;
-    private final PointTaskService pointTaskService;
-    private final Clock clock;
+    @Resource private SignInRecordMapper recordMapper;
+    @Resource private PointTaskService pointTaskService;
+    @Resource private Clock clock;
 
-    public SignInTransactionService(SignInRecordMapper recordMapper, PointTaskService pointTaskService,
-                                    Clock clock) {
-        this.recordMapper = recordMapper;
-        this.pointTaskService = pointTaskService;
-        this.clock = clock;
-    }
 
     @Transactional
     public SignInRecordDO record(String userId, LocalDate date, int continuousDays, int rewardPoints) {

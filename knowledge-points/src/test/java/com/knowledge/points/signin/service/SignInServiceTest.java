@@ -9,6 +9,7 @@ import static org.mockito.Mockito.when;
 import com.knowledge.points.signin.dao.mapper.SignInRecordMapper;
 import java.time.LocalDate;
 import org.junit.jupiter.api.Test;
+import org.springframework.test.util.ReflectionTestUtils;
 
 class SignInServiceTest {
 
@@ -23,7 +24,11 @@ class SignInServiceTest {
         when(bitmap.continuousDays("u1", date)).thenReturn(3);
         when(transaction.record("u1", date, 3, 14)).thenThrow(new IllegalStateException("db down"));
 
-        SignInService service = new SignInService(mapper, bitmap, new SignInRewardPolicy(), transaction);
+        SignInService service = new SignInService();
+        ReflectionTestUtils.setField(service, "recordMapper", mapper);
+        ReflectionTestUtils.setField(service, "bitmapService", bitmap);
+        ReflectionTestUtils.setField(service, "rewardPolicy", new SignInRewardPolicy());
+        ReflectionTestUtils.setField(service, "transactionService", transaction);
 
         assertThatThrownBy(() -> service.sign("u1", date)).isInstanceOf(IllegalStateException.class);
         verify(bitmap).clear("u1", date);

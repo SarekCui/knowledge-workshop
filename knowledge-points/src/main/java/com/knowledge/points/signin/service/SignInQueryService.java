@@ -8,14 +8,14 @@ import com.knowledge.points.signin.dao.model.SignInRecordDO;
 import java.time.Clock;
 import java.time.LocalDate;
 import java.time.YearMonth;
-import org.springframework.beans.factory.annotation.Autowired;
+import jakarta.annotation.Resource;
 import org.springframework.stereotype.Service;
 
 @Service
 public class SignInQueryService {
-    @Autowired
+    @Resource
     private SignInRecordMapper recordMapper;
-    @Autowired
+    @Resource
     private Clock clock;
 
     public SignInMonthBO month(String userId, String month) {

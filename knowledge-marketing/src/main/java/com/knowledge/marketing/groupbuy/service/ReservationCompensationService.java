@@ -6,29 +6,19 @@ import com.knowledge.marketing.groupbuy.dao.mapper.GroupParticipantMapper;
 import com.knowledge.marketing.groupbuy.dao.mapper.TradeOrderMapper;
 import java.time.Clock;
 import java.time.LocalDateTime;
+import jakarta.annotation.Resource;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.support.TransactionTemplate;
 
 @Service
 public class ReservationCompensationService {
 
-    private final SlotReservationService slotService;
-    private final GroupParticipantMapper participantMapper;
-    private final TradeOrderMapper orderMapper;
-    private final TransactionTemplate transactionTemplate;
-    private final Clock clock;
+    @Resource private SlotReservationService slotService;
+    @Resource private GroupParticipantMapper participantMapper;
+    @Resource private TradeOrderMapper orderMapper;
+    @Resource private TransactionTemplate transactionTemplate;
+    @Resource private Clock clock;
 
-    public ReservationCompensationService(SlotReservationService slotService,
-                                          GroupParticipantMapper participantMapper,
-                                          TradeOrderMapper orderMapper,
-                                          TransactionTemplate transactionTemplate,
-                                          Clock clock) {
-        this.slotService = slotService;
-        this.participantMapper = participantMapper;
-        this.orderMapper = orderMapper;
-        this.transactionTemplate = transactionTemplate;
-        this.clock = clock;
-    }
 
     public int compensate(int limit) {
         int released = 0;

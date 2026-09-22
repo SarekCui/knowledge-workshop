@@ -16,35 +16,21 @@ import com.knowledge.marketing.groupbuy.dao.mapper.GroupParticipantMapper;
 import com.knowledge.marketing.groupbuy.dao.mapper.TradeOrderMapper;
 import com.knowledge.marketing.groupbuy.rule.JoinRuleChain;
 import com.knowledge.marketing.groupbuy.rule.JoinValidationContext;
+import jakarta.annotation.Resource;
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.stereotype.Service;
 
 @Service
 public class GroupPurchaseService {
 
-    private final GroupActivityMapper activityMapper;
-    private final GroupOrderMapper groupMapper;
-    private final GroupParticipantMapper participantMapper;
-    private final TradeOrderMapper tradeOrderMapper;
-    private final JoinRuleChain ruleChain;
-    private final SlotReservationService slotReservationService;
-    private final GroupJoinTransactionService transactionService;
+    @Resource private GroupActivityMapper activityMapper;
+    @Resource private GroupOrderMapper groupMapper;
+    @Resource private GroupParticipantMapper participantMapper;
+    @Resource private TradeOrderMapper tradeOrderMapper;
+    @Resource private JoinRuleChain ruleChain;
+    @Resource private SlotReservationService slotReservationService;
+    @Resource private GroupJoinTransactionService transactionService;
 
-    public GroupPurchaseService(GroupActivityMapper activityMapper,
-                                GroupOrderMapper groupMapper,
-                                GroupParticipantMapper participantMapper,
-                                TradeOrderMapper tradeOrderMapper,
-                                JoinRuleChain ruleChain,
-                                SlotReservationService slotReservationService,
-                                GroupJoinTransactionService transactionService) {
-        this.activityMapper = activityMapper;
-        this.groupMapper = groupMapper;
-        this.participantMapper = participantMapper;
-        this.tradeOrderMapper = tradeOrderMapper;
-        this.ruleChain = ruleChain;
-        this.slotReservationService = slotReservationService;
-        this.transactionService = transactionService;
-    }
 
     public TradeOrderBO join(JoinGroupBO request) {
         TradeOrderDO existing = findByGroupAndUser(request.groupId(), request.userId());

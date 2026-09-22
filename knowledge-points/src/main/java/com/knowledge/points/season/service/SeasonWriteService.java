@@ -2,14 +2,14 @@ package com.knowledge.points.season.service;
 
 import com.knowledge.points.season.dao.mapper.SeasonMapper;
 import com.knowledge.points.season.enums.SeasonStatus;
-import org.springframework.beans.factory.annotation.Autowired;
+import jakarta.annotation.Resource;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class SeasonWriteService {
-    @Autowired
+    @Resource
     private SeasonMapper seasonMapper;
 
     @Transactional(propagation = Propagation.MANDATORY)

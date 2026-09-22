@@ -6,6 +6,7 @@ import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
+import jakarta.annotation.Resource;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.data.redis.core.ZSetOperations.TypedTuple;
 import org.springframework.stereotype.Service;
@@ -14,11 +15,8 @@ import org.springframework.stereotype.Service;
 public class LeaderboardService {
 
     private static final Duration RANKING_RETENTION = Duration.ofDays(400);
-    private final StringRedisTemplate redisTemplate;
+    @Resource private StringRedisTemplate redisTemplate;
 
-    public LeaderboardService(StringRedisTemplate redisTemplate) {
-        this.redisTemplate = redisTemplate;
-    }
 
     public void synchronizeScore(String season, String userId, long totalPoints) {
         redisTemplate.opsForZSet().add(key(season), userId, totalPoints);

@@ -7,7 +7,7 @@ import com.knowledge.points.signin.service.SignInService;
 import com.knowledge.points.signin.vo.SignInVO;
 import com.knowledge.points.signin.vo.SignInMonthVO;
 import com.knowledge.points.signin.service.SignInQueryService;
-import org.springframework.beans.factory.annotation.Autowired;
+import jakarta.annotation.Resource;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import com.knowledge.security.context.UserContext;
@@ -26,11 +26,11 @@ import org.springframework.web.bind.annotation.RestController;
 @Tag(name = "每日签到", description = "记录签到并异步创建积分任务")
 public class SignInController {
 
-    @Autowired
+    @Resource
     private SignInService signInService;
-    @Autowired
+    @Resource
     private Clock clock;
-    @Autowired
+    @Resource
     private SignInQueryService queryService;
 
     @GetMapping

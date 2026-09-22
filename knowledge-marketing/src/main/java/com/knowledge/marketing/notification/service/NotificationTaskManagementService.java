@@ -12,19 +12,16 @@ import com.knowledge.marketing.notification.dao.model.NotificationTaskDO;
 import com.knowledge.marketing.notification.enums.NotificationStatus;
 import java.time.Clock;
 import java.time.LocalDateTime;
+import jakarta.annotation.Resource;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class NotificationTaskManagementService {
 
-    private final NotificationTaskMapper taskMapper;
-    private final Clock clock;
+    @Resource private NotificationTaskMapper taskMapper;
+    @Resource private Clock clock;
 
-    public NotificationTaskManagementService(NotificationTaskMapper taskMapper, Clock clock) {
-        this.taskMapper = taskMapper;
-        this.clock = clock;
-    }
 
     public PageBO<NotificationTaskBO> list(NotificationStatus status, int pageNo, int pageSize) {
         var query = Wrappers.<NotificationTaskDO>lambdaQuery();

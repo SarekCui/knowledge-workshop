@@ -7,24 +7,18 @@ import com.knowledge.points.signin.converter.SignInConverter;
 import com.knowledge.points.signin.dao.model.SignInRecordDO;
 import com.knowledge.points.signin.dao.mapper.SignInRecordMapper;
 import java.time.LocalDate;
+import jakarta.annotation.Resource;
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.stereotype.Service;
 
 @Service
 public class SignInService {
 
-    private final SignInRecordMapper recordMapper;
-    private final SignInBitmapService bitmapService;
-    private final SignInRewardPolicy rewardPolicy;
-    private final SignInTransactionService transactionService;
+    @Resource private SignInRecordMapper recordMapper;
+    @Resource private SignInBitmapService bitmapService;
+    @Resource private SignInRewardPolicy rewardPolicy;
+    @Resource private SignInTransactionService transactionService;
 
-    public SignInService(SignInRecordMapper recordMapper, SignInBitmapService bitmapService,
-                         SignInRewardPolicy rewardPolicy, SignInTransactionService transactionService) {
-        this.recordMapper = recordMapper;
-        this.bitmapService = bitmapService;
-        this.rewardPolicy = rewardPolicy;
-        this.transactionService = transactionService;
-    }
 
     @DistributedLock(keys = SignInRedisKey.LOCK_SPEL, leaseTime = 15)
     public SignInBO sign(String userId, LocalDate date) {

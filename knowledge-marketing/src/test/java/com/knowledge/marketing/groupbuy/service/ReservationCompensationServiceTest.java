@@ -13,6 +13,7 @@ import java.time.Clock;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.springframework.transaction.support.TransactionTemplate;
+import org.springframework.test.util.ReflectionTestUtils;
 
 class ReservationCompensationServiceTest {
 
@@ -28,8 +29,13 @@ class ReservationCompensationServiceTest {
         participant.setStatus(ParticipantStatus.CONFIRMED);
         when(participants.findByGroupAndUser("g1", "u1")).thenReturn(participant);
 
-        new ReservationCompensationService(slots, participants, orders, transaction, Clock.systemUTC())
-                .compensate(10);
+        ReservationCompensationService service = new ReservationCompensationService();
+        ReflectionTestUtils.setField(service, "slotService", slots);
+        ReflectionTestUtils.setField(service, "participantMapper", participants);
+        ReflectionTestUtils.setField(service, "orderMapper", orders);
+        ReflectionTestUtils.setField(service, "transactionTemplate", transaction);
+        ReflectionTestUtils.setField(service, "clock", Clock.systemUTC());
+        service.compensate(10);
 
         verify(slots).confirm("g1", "u1");
         verify(slots, never()).release("g1", "u1");

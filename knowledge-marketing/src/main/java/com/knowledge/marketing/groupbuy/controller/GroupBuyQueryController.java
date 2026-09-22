@@ -14,6 +14,7 @@ import com.knowledge.security.context.UserContext;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
+import jakarta.annotation.Resource;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -26,11 +27,8 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/api/marketing")
 public class GroupBuyQueryController {
 
-    private final GroupBuyQueryService queryService;
+    @Resource private GroupBuyQueryService queryService;
 
-    public GroupBuyQueryController(GroupBuyQueryService queryService) {
-        this.queryService = queryService;
-    }
 
     @GetMapping("/activities")
     public Result<PageVO<GroupActivityVO>> activities(

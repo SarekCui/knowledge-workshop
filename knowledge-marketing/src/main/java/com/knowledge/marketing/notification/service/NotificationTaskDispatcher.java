@@ -7,6 +7,7 @@ import com.knowledge.marketing.notification.dao.mapper.NotificationTaskMapper;
 import java.time.Clock;
 import java.time.LocalDateTime;
 import java.util.concurrent.TimeUnit;
+import jakarta.annotation.Resource;
 import org.springframework.amqp.rabbit.connection.CorrelationData;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.stereotype.Service;
@@ -15,15 +16,10 @@ import org.springframework.stereotype.Service;
 public class NotificationTaskDispatcher {
 
     private static final int MAX_RETRY = 10;
-    private final NotificationTaskMapper taskMapper;
-    private final RabbitTemplate rabbitTemplate;
-    private final Clock clock;
+    @Resource private NotificationTaskMapper taskMapper;
+    @Resource private RabbitTemplate rabbitTemplate;
+    @Resource private Clock clock;
 
-    public NotificationTaskDispatcher(NotificationTaskMapper taskMapper, RabbitTemplate rabbitTemplate, Clock clock) {
-        this.taskMapper = taskMapper;
-        this.rabbitTemplate = rabbitTemplate;
-        this.clock = clock;
-    }
 
     public int dispatchBatch(int limit) {
         int sent = 0;

@@ -18,6 +18,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
+import jakarta.annotation.Resource;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -36,13 +37,9 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/api/marketing/admin")
 public class GroupBuyAdminController {
 
-    private final GroupBuyManagementService managementService;
-    private final GroupBuyQueryService queryService;
+    @Resource private GroupBuyManagementService managementService;
+    @Resource private GroupBuyQueryService queryService;
 
-    public GroupBuyAdminController(GroupBuyManagementService managementService, GroupBuyQueryService queryService) {
-        this.managementService = managementService;
-        this.queryService = queryService;
-    }
 
     @GetMapping("/activities")
     public Result<PageVO<GroupActivityVO>> activities(

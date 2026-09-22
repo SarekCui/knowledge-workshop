@@ -11,6 +11,7 @@ import com.knowledge.marketing.notification.vo.NotificationTaskVO;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
+import jakarta.annotation.Resource;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -26,11 +27,8 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/api/marketing/admin/notification-tasks")
 public class NotificationTaskAdminController {
 
-    private final NotificationTaskManagementService managementService;
+    @Resource private NotificationTaskManagementService managementService;
 
-    public NotificationTaskAdminController(NotificationTaskManagementService managementService) {
-        this.managementService = managementService;
-    }
 
     @GetMapping
     public Result<PageVO<NotificationTaskVO>> list(

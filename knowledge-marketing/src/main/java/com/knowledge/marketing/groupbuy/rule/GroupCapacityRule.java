@@ -4,6 +4,7 @@ import com.knowledge.common.exception.BusinessException;
 import com.knowledge.marketing.groupbuy.enums.GroupStatus;
 import java.time.Clock;
 import java.time.LocalDateTime;
+import jakarta.annotation.Resource;
 import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Component;
 
@@ -11,11 +12,8 @@ import org.springframework.stereotype.Component;
 @Component
 public class GroupCapacityRule implements JoinRule {
 
-    private final Clock clock;
+    @Resource private Clock clock;
 
-    public GroupCapacityRule(Clock clock) {
-        this.clock = clock;
-    }
 
     @Override
     public void check(JoinValidationContext context) {

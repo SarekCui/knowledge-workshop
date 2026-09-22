@@ -19,6 +19,7 @@ import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
 import java.time.temporal.ChronoUnit;
+import jakarta.annotation.Resource;
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -26,18 +27,11 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class GroupBuyManagementService {
 
-    private final GroupActivityMapper activityMapper;
-    private final GroupOrderMapper groupMapper;
-    private final GroupBuyQueryService queryService;
-    private final Clock clock;
+    @Resource private GroupActivityMapper activityMapper;
+    @Resource private GroupOrderMapper groupMapper;
+    @Resource private GroupBuyQueryService queryService;
+    @Resource private Clock clock;
 
-    public GroupBuyManagementService(GroupActivityMapper activityMapper, GroupOrderMapper groupMapper,
-                                     GroupBuyQueryService queryService, Clock clock) {
-        this.activityMapper = activityMapper;
-        this.groupMapper = groupMapper;
-        this.queryService = queryService;
-        this.clock = clock;
-    }
 
     @Transactional
     public GroupActivityBO createActivity(CreateGroupActivityDTO request) {

@@ -19,23 +19,23 @@ import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
 import java.util.UUID;
-import org.springframework.beans.factory.annotation.Autowired;
+import jakarta.annotation.Resource;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class SeasonSettlementTransactionService {
-    @Autowired
+    @Resource
     private SeasonMapper seasonMapper;
-    @Autowired
+    @Resource
     private SeasonSnapshotMapper snapshotMapper;
-    @Autowired
+    @Resource
     private SeasonArchiveMapper archiveMapper;
-    @Autowired
+    @Resource
     private SeasonRankingQueryService rankingQueryService;
-    @Autowired
+    @Resource
     private QuarterTableRouter tableRouter;
-    @Autowired
+    @Resource
     private Clock clock;
 
     @Transactional

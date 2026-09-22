@@ -8,16 +8,16 @@ import java.time.LocalDateTime;
 import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.List;
-import org.springframework.beans.factory.annotation.Autowired;
+import jakarta.annotation.Resource;
 import org.springframework.stereotype.Service;
 
 @Service
 public class SeasonRankingQueryService {
-    @Autowired
+    @Resource
     private PointLedgerMapper ledgerMapper;
-    @Autowired
+    @Resource
     private SeasonAccountMapper accountMapper;
-    @Autowired
+    @Resource
     private QuarterTableRouter tableRouter;
 
     public long outstandingTasks(Instant startsAt, Instant endsAt) {

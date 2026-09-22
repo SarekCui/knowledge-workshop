@@ -14,6 +14,7 @@ import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
 import org.junit.jupiter.api.Test;
+import org.springframework.test.util.ReflectionTestUtils;
 
 class JoinRulesTest {
 
@@ -24,7 +25,7 @@ class JoinRulesTest {
         JoinValidationContext context = context();
         context.activity().setEndTime(LocalDateTime.of(2026, 9, 3, 0, 0));
 
-        assertThatThrownBy(() -> new ActivityAvailableRule(clock).check(context))
+        assertThatThrownBy(() -> activityRule().check(context))
                 .isInstanceOfSatisfying(BusinessException.class,
                         exception -> {
                             org.assertj.core.api.Assertions.assertThat(exception.getErrorCode())
@@ -42,7 +43,7 @@ class JoinRulesTest {
 
         JoinValidationContext full = context();
         full.group().setConfirmedCount(3);
-        assertThatThrownBy(() -> new GroupCapacityRule(clock).check(full))
+        assertThatThrownBy(() -> capacityRule().check(full))
                 .isInstanceOfSatisfying(BusinessException.class,
                         exception -> {
                             org.assertj.core.api.Assertions.assertThat(exception.getErrorCode())
@@ -64,5 +65,17 @@ class JoinRulesTest {
         group.setConfirmedCount(0);
         group.setTargetCount(3);
         return new JoinValidationContext(activity, group, 0);
+    }
+
+    private ActivityAvailableRule activityRule() {
+        ActivityAvailableRule target = new ActivityAvailableRule();
+        ReflectionTestUtils.setField(target, "clock", clock);
+        return target;
+    }
+
+    private GroupCapacityRule capacityRule() {
+        GroupCapacityRule target = new GroupCapacityRule();
+        ReflectionTestUtils.setField(target, "clock", clock);
+        return target;
     }
 }

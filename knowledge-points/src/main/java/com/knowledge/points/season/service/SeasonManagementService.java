@@ -11,15 +11,15 @@ import com.knowledge.points.season.dao.model.SeasonDO;
 import com.knowledge.points.season.dto.SeasonCreateDTO;
 import java.time.Clock;
 import java.time.Instant;
-import org.springframework.beans.factory.annotation.Autowired;
+import jakarta.annotation.Resource;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class SeasonManagementService {
-    @Autowired
+    @Resource
     private SeasonMapper seasonMapper;
-    @Autowired
+    @Resource
     private Clock clock;
 
     @Transactional

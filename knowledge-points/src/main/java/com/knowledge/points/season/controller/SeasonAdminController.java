@@ -18,7 +18,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
-import org.springframework.beans.factory.annotation.Autowired;
+import jakarta.annotation.Resource;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -35,11 +35,11 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/api/points/admin/seasons")
 @Tag(name = "积分赛季管理")
 public class SeasonAdminController {
-    @Autowired
+    @Resource
     private SeasonManagementService managementService;
-    @Autowired
+    @Resource
     private SeasonSettlementService settlementService;
-    @Autowired
+    @Resource
     private SeasonHistoryService historyService;
 
     @GetMapping("/{season}/ranking")

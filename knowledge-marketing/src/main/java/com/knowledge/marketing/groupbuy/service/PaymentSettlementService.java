@@ -24,6 +24,7 @@ import java.util.UUID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.slf4j.MDC;
+import jakarta.annotation.Resource;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionSynchronization;
@@ -34,29 +35,14 @@ public class PaymentSettlementService {
 
     private static final Logger LOG = LoggerFactory.getLogger(PaymentSettlementService.class);
 
-    private final TradeOrderMapper orderMapper;
-    private final GroupParticipantMapper participantMapper;
-    private final GroupOrderMapper groupMapper;
-    private final NotificationTaskMapper taskMapper;
-    private final ObjectMapper objectMapper;
-    private final Clock clock;
-    private final SlotReservationService slotReservationService;
+    @Resource private TradeOrderMapper orderMapper;
+    @Resource private GroupParticipantMapper participantMapper;
+    @Resource private GroupOrderMapper groupMapper;
+    @Resource private NotificationTaskMapper taskMapper;
+    @Resource private ObjectMapper objectMapper;
+    @Resource private Clock clock;
+    @Resource private SlotReservationService slotReservationService;
 
-    public PaymentSettlementService(TradeOrderMapper orderMapper,
-                                    GroupParticipantMapper participantMapper,
-                                    GroupOrderMapper groupMapper,
-                                    NotificationTaskMapper taskMapper,
-                                    ObjectMapper objectMapper,
-                                    Clock clock,
-                                    SlotReservationService slotReservationService) {
-        this.orderMapper = orderMapper;
-        this.participantMapper = participantMapper;
-        this.groupMapper = groupMapper;
-        this.taskMapper = taskMapper;
-        this.objectMapper = objectMapper;
-        this.clock = clock;
-        this.slotReservationService = slotReservationService;
-    }
 
     @Transactional
     public TradeOrderBO settle(String orderId, String paymentTradeNo, String authenticatedUserId) {

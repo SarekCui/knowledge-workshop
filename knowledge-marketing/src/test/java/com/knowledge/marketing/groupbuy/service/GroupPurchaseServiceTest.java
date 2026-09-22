@@ -26,6 +26,7 @@ import org.junit.jupiter.api.Test;
 import org.apache.ibatis.builder.MapperBuilderAssistant;
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.data.redis.RedisConnectionFailureException;
+import org.springframework.test.util.ReflectionTestUtils;
 
 class GroupPurchaseServiceTest {
 
@@ -54,8 +55,7 @@ class GroupPurchaseServiceTest {
         when(slots.reserve("g1", "u1", 0, 3))
                 .thenThrow(new RedisConnectionFailureException("redis unavailable"));
 
-        GroupPurchaseService service = new GroupPurchaseService(activities, groups, participants, orders,
-                rules, slots, transaction);
+        GroupPurchaseService service = service(activities, groups, participants, orders, rules, slots, transaction);
 
         assertThatThrownBy(() -> service.join(request)).isInstanceOf(RedisConnectionFailureException.class);
         verify(transaction, never()).createPendingOrder(any(), any());
@@ -93,10 +93,23 @@ class GroupPurchaseServiceTest {
                 .thenReturn(SlotReservationService.ReservationResult.ACQUIRED);
         when(transaction.createPendingOrder(request, activity)).thenThrow(new DuplicateKeyException("duplicate"));
 
-        GroupPurchaseService service = new GroupPurchaseService(activities, groups, participants, orders,
-                rules, slots, transaction);
+        GroupPurchaseService service = service(activities, groups, participants, orders, rules, slots, transaction);
 
         assertThat(service.join(request).orderId()).isEqualTo("existing-order");
         verify(slots).release("g1", "u1");
+    }
+
+    private GroupPurchaseService service(GroupActivityMapper activities, GroupOrderMapper groups,
+            GroupParticipantMapper participants, TradeOrderMapper orders, JoinRuleChain rules,
+            SlotReservationService slots, GroupJoinTransactionService transaction) {
+        GroupPurchaseService target = new GroupPurchaseService();
+        ReflectionTestUtils.setField(target, "activityMapper", activities);
+        ReflectionTestUtils.setField(target, "groupMapper", groups);
+        ReflectionTestUtils.setField(target, "participantMapper", participants);
+        ReflectionTestUtils.setField(target, "tradeOrderMapper", orders);
+        ReflectionTestUtils.setField(target, "ruleChain", rules);
+        ReflectionTestUtils.setField(target, "slotReservationService", slots);
+        ReflectionTestUtils.setField(target, "transactionService", transaction);
+        return target;
     }
 }

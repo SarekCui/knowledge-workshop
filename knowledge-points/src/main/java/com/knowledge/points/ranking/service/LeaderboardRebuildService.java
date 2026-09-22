@@ -3,18 +3,15 @@ package com.knowledge.points.ranking.service;
 import com.knowledge.lock.annotation.DistributedLock;
 import com.knowledge.points.ranking.bo.QuarterTableRouteBO;
 import com.knowledge.points.ranking.dao.mapper.PointLedgerMapper;
+import jakarta.annotation.Resource;
 import org.springframework.stereotype.Service;
 
 @Service
 public class LeaderboardRebuildService {
 
-    private final PointLedgerMapper ledgerMapper;
-    private final LeaderboardService leaderboardService;
+    @Resource private PointLedgerMapper ledgerMapper;
+    @Resource private LeaderboardService leaderboardService;
 
-    public LeaderboardRebuildService(PointLedgerMapper ledgerMapper, LeaderboardService leaderboardService) {
-        this.ledgerMapper = ledgerMapper;
-        this.leaderboardService = leaderboardService;
-    }
 
     @DistributedLock(keys = RankingRedisKey.REBUILD_LOCK_SPEL, leaseTime = 60)
     public int rebuild(QuarterTableRouteBO route) {

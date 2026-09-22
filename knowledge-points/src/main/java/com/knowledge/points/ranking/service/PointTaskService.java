@@ -10,7 +10,7 @@ import java.time.LocalDateTime;
 import java.time.ZoneOffset;
 import java.util.UUID;
 import org.springframework.stereotype.Service;
-import org.springframework.beans.factory.annotation.Autowired;
+import jakarta.annotation.Resource;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 import com.knowledge.points.season.service.SeasonWriteService;
@@ -18,13 +18,13 @@ import com.knowledge.points.season.service.SeasonWriteService;
 @Service
 public class PointTaskService {
 
-    @Autowired
+    @Resource
     private PointTaskMapper taskMapper;
-    @Autowired
+    @Resource
     private ObjectMapper objectMapper;
-    @Autowired
+    @Resource
     private SeasonWriteService seasonWriteService;
-    @Autowired
+    @Resource
     private QuarterTableRouter tableRouter;
 
     @Transactional(propagation = Propagation.MANDATORY)

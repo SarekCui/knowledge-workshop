@@ -4,7 +4,7 @@ import com.knowledge.points.ranking.service.QuarterTableRouter;
 import com.knowledge.points.season.service.SeasonMaintenanceService;
 import com.knowledge.points.season.service.SeasonSettlementService;
 import com.knowledge.points.season.rule.SeasonPeriodRule;
-import org.springframework.beans.factory.annotation.Autowired;
+import jakarta.annotation.Resource;
 import java.time.ZoneOffset;
 import com.xxl.job.core.handler.annotation.XxlJob;
 import java.time.Clock;
@@ -13,13 +13,13 @@ import org.springframework.stereotype.Component;
 
 @Component
 public class SeasonRankingJob {
-    @Autowired
+    @Resource
     private SeasonMaintenanceService maintenanceService;
-    @Autowired
+    @Resource
     private QuarterTableRouter tableRouter;
-    @Autowired
+    @Resource
     private Clock clock;
-    @Autowired
+    @Resource
     private SeasonSettlementService settlementService;
 
     @XxlJob("settlePointSeason")

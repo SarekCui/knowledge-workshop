@@ -11,23 +11,17 @@ import com.knowledge.marketing.groupbuy.dao.mapper.TradeOrderMapper;
 import java.time.Clock;
 import java.time.LocalDateTime;
 import java.util.UUID;
+import jakarta.annotation.Resource;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class GroupJoinTransactionService {
 
-    private final TradeOrderMapper tradeOrderMapper;
-    private final GroupParticipantMapper participantMapper;
-    private final Clock clock;
+    @Resource private TradeOrderMapper tradeOrderMapper;
+    @Resource private GroupParticipantMapper participantMapper;
+    @Resource private Clock clock;
 
-    public GroupJoinTransactionService(TradeOrderMapper tradeOrderMapper,
-                                       GroupParticipantMapper participantMapper,
-                                       Clock clock) {
-        this.tradeOrderMapper = tradeOrderMapper;
-        this.participantMapper = participantMapper;
-        this.clock = clock;
-    }
 
     @Transactional
     public TradeOrderDO createPendingOrder(JoinGroupBO request, GroupActivityDO activity) {

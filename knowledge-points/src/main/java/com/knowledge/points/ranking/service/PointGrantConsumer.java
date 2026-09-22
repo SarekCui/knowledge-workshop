@@ -7,19 +7,19 @@ import com.knowledge.points.ranking.config.PointsRabbitConfiguration;
 import java.io.IOException;
 import org.springframework.amqp.rabbit.annotation.RabbitListener;
 import org.springframework.stereotype.Service;
-import org.springframework.beans.factory.annotation.Autowired;
+import jakarta.annotation.Resource;
 import com.knowledge.points.season.service.SeasonClosedException;
 
 @Service
 public class PointGrantConsumer {
 
-    @Autowired
+    @Resource
     private ObjectMapper objectMapper;
-    @Autowired
+    @Resource
     private PointGrantTransactionService transactionService;
-    @Autowired
+    @Resource
     private LeaderboardService leaderboardService;
-    @Autowired
+    @Resource
     private RejectedPointEventService rejectedEventService;
 
     @RabbitListener(queues = PointsRabbitConfiguration.POINT_GRANT_QUEUE)

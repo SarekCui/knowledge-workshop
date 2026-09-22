@@ -9,14 +9,14 @@ import com.knowledge.points.season.converter.SeasonRankingConverter;
 import com.knowledge.points.season.dao.mapper.SeasonSnapshotMapper;
 import com.knowledge.points.season.dao.model.SeasonSnapshotDO;
 import com.knowledge.points.season.enums.SeasonStatus;
-import org.springframework.beans.factory.annotation.Autowired;
+import jakarta.annotation.Resource;
 import org.springframework.stereotype.Service;
 
 @Service
 public class SeasonHistoryService {
-    @Autowired
+    @Resource
     private SeasonManagementService managementService;
-    @Autowired
+    @Resource
     private SeasonSnapshotMapper snapshotMapper;
 
     public PageBO<SeasonRankingBO> ranking(String season, int pageNo, int pageSize) {
