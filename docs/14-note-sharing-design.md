@@ -16,7 +16,7 @@
 
 | 操作 | 接口 | 参数/结果 |
 |---|---|---|
-| 创建草稿 | POST /api/learning/notes | 原DTO，courseId允许null；clientRequestId保持请求幂等 |
+| 创建草稿 | POST /api/learning/notes | DTO 中的 `idempotencyKey` 保持请求幂等，courseId允许null |
 | 本人旧列表 | GET /api/learning/notes | 保持旧List契约，供现有课程Note组件使用 |
 | 本人分页 | GET /api/learning/notes/mine | courseId可选，keyword可选，pageNo/pageSize |
 | 最新公开笔记及搜索 | GET /api/learning/notes/public | 同上；只查询PUBLIC，标题和正文包含搜索 |
@@ -24,12 +24,12 @@
 | 状态切换 | PATCH /api/learning/notes/{noteId}/status | {status:DRAFT/PRIVATE/PUBLIC, version:当前版本} |
 | 本人详情/编辑/重命名/删除 | 原接口 | 保留所有者权限和版本控制 |
 
-Note返回追加authorId/status/publishedAt；不返回clientRequestId、播放URL或作者登录凭证。分页pageNo1—1000、pageSize1—50，keyword最大100字符。公开按publishedAt/id倒序，本人按updatedAt/id倒序。搜索参数绑定，并转义LIKE通配字符；不支持全文检索相关性或热门排序。
+Note返回追加authorId/status/publishedAt；不返回idempotencyKey、播放URL或作者登录凭证。分页pageNo1—1000、pageSize1—50，keyword最大100字符。公开按publishedAt/id倒序，本人按updatedAt/id倒序。搜索参数绑定，并转义LIKE通配字符；不支持全文检索相关性或热门排序。
 
 ## 第三批互动设计
 
 - 笔记点赞、收藏分别以`(note_id,user_id)`唯一约束作为业务幂等键；评论与回复点赞以`(comment_id,user_id)`唯一约束作为业务幂等键。`PUT`重复调用返回当前状态，`DELETE`重复调用同样成功，不要求客户端额外生成UUID。
-- 评论创建使用客户端UUID `clientRequestId`，唯一键为`(user_id,client_request_id)`；相同Key绑定相同note、父评论和正文，不同请求指纹返回409。
+- 评论创建使用 DTO `idempotencyKey`，格式为`调用方:操作:稳定标识`；唯一键仍为`(user_id,client_request_id)`，相同Key绑定相同note、父评论和正文，不同请求指纹返回409。
 - 评论可回复任一层仍有效的同篇评论，`parentCommentId`必须指向同一篇仍有效的评论。接口按创建时间正序返回有界扁平分页，前端只在当前页构建树；父评论不在当前页时，该回复独立展示，不伪造跨页祖先链。
 - 评论列表返回每条评论的`likeCount`和当前用户`liked`状态；当前页的点赞状态批量查询，避免按评论逐条查询。前端按每个直接子树独立展开/收起，默认折叠已有回复；点击“回复”时自动展开对应节点。评论与回复正文超过六行左右的实际渲染高度时以渐隐效果折叠，用户可展开全文或收起；阈值根据元素实际高度响应式计算，不按字符数截断。
 - 互动只允许作用于未删除的PUBLIC笔记。撤回后保留既有互动事实，重新发布后恢复展示；删除笔记后公开入口不可访问互动。

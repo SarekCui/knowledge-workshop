@@ -27,6 +27,7 @@ IAM、营销、积分和网关统一输出 Logstash JSON 日志；HTTP 完成日
 - [系统架构设计](docs/01-architecture.md)
 - [工程设计约束](docs/02-engineering-constraints.md)
 - [核心领域与一致性设计](docs/03-domain-and-consistency.md)
+- [知识付费拼团业务链路（面试材料）](docs/interview/group-buy-business-flow.md)
 - [多轮次建设目标](docs/04-iteration-roadmap.md)
 - [质量与验收标准](docs/05-quality-and-acceptance.md)
 - [视频学习进度企业级设计](docs/06-video-progress-design.md)
@@ -77,7 +78,7 @@ export JAVA_HOME=/Library/Java/JavaVirtualMachines/jdk-17.jdk/Contents/Home
 export JWT_SECRET='replace-with-at-least-32-random-bytes'
 mvn test
 mvn package -DskipTests
-java -jar knowledge-iam/target/knowledge-iam-0.1.0-SNAPSHOT.jar
+SPRING_PROFILES_ACTIVE=local java -jar knowledge-iam/target/knowledge-iam-0.1.0-SNAPSHOT.jar
 java -jar knowledge-marketing/target/knowledge-marketing-0.1.0-SNAPSHOT.jar
 java -jar knowledge-points/target/knowledge-points-0.1.0-SNAPSHOT.jar
 java -jar knowledge-learning/target/knowledge-learning-0.1.0-SNAPSHOT.jar
@@ -85,10 +86,11 @@ SPRING_PROFILES_ACTIVE=local java -jar knowledge-agent/target/knowledge-agent-0.
 java -jar knowledge-gateway/target/knowledge-gateway-0.1.0-SNAPSHOT.jar
 ```
 
-小智的 DeepSeek 配置仅保存在被 Git 忽略的
-`knowledge-agent/src/main/resources/application-local.yml`；可从
-`application-local.example.yml` 复制创建。`scripts/start-local.sh` 会仅为 Agent
-启用该 `local` Profile，并与其他本地服务共享同一次启动生成的 JWT 密钥。
+小智的 DeepSeek 与 M2M client secret 仅保存在被 Git 忽略的
+`knowledge-agent/src/main/resources/application-local.yml`；IAM 的 M2M RSA 私钥仅保存在
+被 Git 忽略的 `knowledge-iam/src/main/resources/application-local.yml`。两个文件都可从对应的
+`application-local.example.yml` 复制创建。`scripts/start-local.sh` 会为 IAM 和 Agent 启用
+`local` Profile，并与其他本地服务共享同一次启动生成的 JWT 密钥。
 
 也可以在完成打包后使用统一脚本启动或停止全部业务服务与前端。脚本只在进程内生成本次启动共用的临时JWT密钥，不输出或写入密钥：
 

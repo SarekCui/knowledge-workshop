@@ -26,7 +26,7 @@
 | points | POST | `/api/points/sign-ins` | JWT `sub` + UTC 日期；请求体不接收用户 ID |
 | points | GET | `/api/points/leaderboard` | `limit` 限制为 1—1000 |
 | learning | GET | `/api/learning/courses`、`/{courseId}`、`/{courseId}/chapters` | 只返回已发布内容 |
-| learning | POST/GET/PUT/PATCH/DELETE | `/api/learning/notes/**` | JWT `sub` 为所有者；创建以 `clientRequestId` 幂等，修改使用 `version` |
+| learning | POST/GET/PUT/PATCH/DELETE | `/api/learning/notes/**` | JWT `sub` 为所有者；创建以 DTO `idempotencyKey` 幂等，修改使用 `version` |
 | learning | POST/GET | `/api/learning/videos/{videoId}/sessions`、`/progress` | `eventId` 幂等，`sessionEpoch + sequence` 防乱序 |
 | learning | GET | `/api/learning/progress/recent`、`/api/learning/entitlements` | 只读取当前 JWT 用户数据 |
 | learning | POST/PUT/PATCH/DELETE | `/api/learning/admin/**` | 仅 `ADMIN` 角色；修改使用 `version` |

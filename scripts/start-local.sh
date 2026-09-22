@@ -38,18 +38,23 @@ done
 
 mkdir -p "$runtime_dir"
 jwt_secret="$(openssl rand -hex 32)"
+m2m_client_secret="$(openssl rand -hex 32)"
+m2m_private_key="$(openssl genpkey -algorithm RSA -pkeyopt rsa_keygen_bits:2048 2>/dev/null | base64 | tr -d '\n')"
 
 start_java() {
   local service="$1"
   local module="knowledge-$service"
   local profile=()
-  if [[ "$service" == "agent" ]]; then
+  if [[ "$service" == "iam" || "$service" == "agent" ]]; then
     profile=(SPRING_PROFILES_ACTIVE=local)
   fi
   env \
     JAVA_HOME="$java_home_value" \
     PATH="$java_home_value/bin:$PATH" \
     JWT_SECRET="$jwt_secret" \
+    KNOWLEDGE_SECURITY_M2M_AGENT_CLIENT_SECRET="$m2m_client_secret" \
+    KNOWLEDGE_SECURITY_M2M_RSA_PRIVATE_KEY="$m2m_private_key" \
+    KNOWLEDGE_AGENT_M2M_CLIENT_SECRET="$m2m_client_secret" \
     WEB_AUTH_COOKIE_SECURE=false \
     ${profile[@]+"${profile[@]}"} \
     "$java_home_value/bin/java" -jar "$project_dir/$module/target/$module-0.1.0-SNAPSHOT.jar" \
