@@ -65,7 +65,7 @@ flowchart LR
     Agent --> Model[模型供应商]
     Agent --> Vector[(Qdrant 公共向量索引)]
     Agent --> AgentDB[(agent_db)]
-    AgentDB -->|AgentRunRequested Outbox| MQ
+    AgentDB -->|ExecuteRun Command Outbox| MQ
     MQ -->|执行队列| Worker[Agent Worker]
     Worker --> AgentDB
     Worker --> Model
@@ -137,7 +137,8 @@ POST /api/agent/conversations/{conversationId}/messages/stream
 POST /api/agent/runs/{runId}/cancel
 ```
 
-消息请求包含客户端 UUID 幂等键、问题和页面上下文。课程、章节、视频、Note 等 ID 仅作为查询提示，服务端必须使用 JWT 身份重新校验可见性。
+消息请求在 DTO 中包含 `idempotencyKey`、问题和页面上下文。幂等键格式为
+`调用方:操作:稳定标识`，右侧问答使用 `web:chat-send:{uuid}`；同一次提问的断线或超时重试必须复用原值。课程、章节、视频、Note 等 ID 仅作为查询提示，服务端必须使用 JWT 身份重新校验可见性。
 
 SSE 事件初步定义：
 
@@ -176,7 +177,7 @@ sequenceDiagram
     EQ->>A: 至少一次投递
     A->>AD: 同事务写 Inbox、Run 与执行 Outbox
     A-->>EQ: ACK
-    AD->>RQ: Publisher Confirm 投递 AgentRunRequested
+    AD->>RQ: Publisher Confirm 投递 ExecuteRun 命令
     RQ->>W: 竞争消费，手动 ACK
     W->>AD: 条件抢占、租约与 Fencing Token
     W->>L: 获取并校验公开 Note 与评论上下文
@@ -192,10 +193,10 @@ sequenceDiagram
 
 ```text
 eventId, eventType, occurredAt, aggregateId, version,
-noteId, commentId, parentCommentId, requesterId
+noteId, commentId, parentCommentId, userId
 ```
 
-AI 回复使用 `AGENT_COMMENT_REPLY:{sourceCommentId}` 作为业务幂等键，并由数据库唯一索引兜底。运行生命周期状态与执行阶段分开保存：状态为 `PENDING/RUNNING/RETRY_WAIT/SUCCEEDED/DEAD` 等，评论执行阶段为 `CONTEXT/GENERATE/PUBLISH`。模型结果在进入 `PUBLISH` 前先持久化，发布失败只重试发布，不重新调用模型。可恢复失败进入有界退避，超过上限进入死信和可观测 `DEAD` 状态；任何失败都不能影响用户原评论提交。
+AI 回复使用 `agent:comment-reply:{sourceCommentId}` 作为业务幂等键，并由数据库唯一索引兜底。运行生命周期状态与执行阶段分开保存：状态为 `PENDING/RUNNING/RETRY_WAIT/SUCCEEDED/DEAD` 等，评论执行阶段为 `CONTEXT/GENERATE/PUBLISH`。模型结果在进入 `PUBLISH` 前先持久化，发布失败只重试发布，不重新调用模型。可恢复失败进入有界退避，超过上限进入死信和可观测 `DEAD` 状态；任何失败都不能影响用户原评论提交。
 
 ## 7. 工具与权限模型
 
@@ -263,8 +264,9 @@ contentHash, updatedAt
 - 同一 `conversationId` 同时只允许一个生成任务，避免 LangChain4j Chat Memory 并发损坏和回答交错。
 - MySQL `agent_run` 是运行事实源，RabbitMQ 执行队列负责唤醒、削峰和多实例分发；不使用 Redis 锁决定任务所有权。
 - Worker 通过数据库条件更新领取任务，记录 `leaseOwner`、`leaseUntil` 和递增的 `executionVersion`；所有阶段写入使用该版本作为 Fencing Token。
+- Worker 在运行期间按小于租约一半的间隔续期；续期条件同时校验实例标识、未过期租约和执行版本。续期失败后当前 Worker 不再持久化或发布结果，等待租约过期后由恢复任务重新投递。
 - 生产执行队列使用 Quorum Queue、持久化消息、Publisher Confirm、手动 ACK、有限 Prefetch 和 DLQ；RabbitMQ 4.1 使用 TTL 重试队列加 DLX 实现延迟退避。
-- 生命周期状态按 `PENDING -> RUNNING -> SUCCEEDED` 推进，可恢复失败进入 `RETRY_WAIT`，不可恢复或超过上限进入 `DEAD`；评论执行阶段按 `CONTEXT -> GENERATE -> PUBLISH` 推进，回答在进入 `PUBLISH` 前持久化。
+- 生命周期状态按 `PENDING -> RUNNING -> SUCCEEDED` 推进，可恢复失败进入 `RETRY_WAIT`，不可恢复或达到配置的最大尝试次数（默认 5）进入 `DEAD`；评论执行阶段按 `CONTEXT -> GENERATE -> PUBLISH` 推进，回答在进入 `PUBLISH` 前持久化。
 - 模型、Embedding 和内部 HTTP 调用必须在数据库短事务之外；抢占、检查点和条件状态迁移使用短事务。
 - 低频 Reconciliation Job 恢复租约过期、长期未投递及已有持久化回答但未发布的运行。
 - 同步问答超时后不透明重新生成，避免重复计费和非确定结果。
@@ -311,7 +313,7 @@ contentHash, updatedAt
 
 1. 建立内部契约与威胁模型；已确定 DeepSeek `deepseek-flash`、百炼 `text-embedding-v4`（1024 维）和 Qdrant。
 2. 修复内部上下文资源校验和模型关闭时的服务启动，建立可执行的集成测试入口。
-3. 创建统一 Run 状态机、执行 Outbox、RabbitMQ 执行队列、租约/Fencing Token、阶段重试和对账恢复。
+3. 已创建评论 Run 的首版状态机、执行 Outbox、RabbitMQ 执行队列、条件抢占、Lease/Fencing Token、租约续期、10/60/300 秒 TTL 重试队列与对账恢复；后续补齐模型调用和发布恢复的故障验收及死信重放。
 4. 解耦 SSE 传输与模型运行，补齐超时、取消、最终结果查询和多轮 Memory。
 5. 建立公开资料索引事件、语义切分、Qdrant upsert/delete 和带来源回答。
 6. 接入经过鉴权的个人进度与个人 Note 只读工具，并按场景限制最多 3 次工具调用。
@@ -326,4 +328,4 @@ contentHash, updatedAt
 - 引用粒度、答案质量评估集和上线阈值。
 - `@小智` 解析规则、同名用户冲突与历史评论兼容方式。
 
-本文固化实现决策及正在开发的边界，不代表完整能力已经实现或验收。当前已有无 RAG 流式问答、会话历史、评论 Outbox/消费幂等和实际回复原型；MySQL 状态机 + RabbitMQ 执行队列仍是待实现的目标方案。跨服务接口、事件字段和失败语义见 `docs/20-xiaozhi-agent-contract-and-prototype-plan.md`。
+本文固化实现决策及正在开发的边界，不代表完整能力已经实现或验收。当前已有无 RAG 流式问答、会话历史、评论 Outbox/消费幂等和实际回复原型；评论异步运行已落地执行 Outbox、RabbitMQ 执行队列、条件抢占、Lease/Fencing Token、租约续期、回答持久化检查点与恢复骨架。模型真实调用、发布恢复和死信重放尚缺完整故障验收。跨服务接口、事件字段和失败语义见 `docs/20-xiaozhi-agent-contract-and-prototype-plan.md`。

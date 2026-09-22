@@ -19,7 +19,7 @@ import jakarta.validation.constraints.Size;
 
 import java.util.List;
 
-import org.springframework.beans.factory.annotation.Autowired;
+import jakarta.annotation.Resource;
 import org.springframework.http.MediaType;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -37,7 +37,7 @@ import org.springframework.web.multipart.MultipartFile;
 @Tag(name = "用户资料", description = "当前用户资料与公开作者信息")
 public class UserProfileController {
 
-    @Autowired
+    @Resource
     private UserProfileService userProfileService;
 
     @GetMapping("/profile")

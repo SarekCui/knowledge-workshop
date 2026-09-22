@@ -11,11 +11,11 @@
   → NoteCommentService 正则检测
   → AgentMentionOutboxDO (PENDING)
   → MQ: agent.mentioned.v1 (DLX=knowledge.events.dlx)
-  → AgentCommentReplyWorker (@Scheduled 3s 轮询)
-  → 签 ROLE_AGENT JWT
-  → GET /internal/agent/comments/context (取笔记上下文)
+  → Agent 执行 Outbox + RabbitMQ Worker
+  → OAuth2 Client Credentials 向 IAM 获取并缓存 RS256 服务令牌
+  → OpenFeign GET /internal/notes/{noteId}/comments/{commentId}/agent-context (取笔记上下文)
   → 调 DeepSeek
-  → POST /internal/agent/comments/ai-replies (写回，parentCommentId=源评论)
+  → OpenFeign POST /internal/notes/{noteId}/comments (写回，parentCommentId=源评论)
 ```
 
 当前链路只用于原型验证，定时 Worker 的“查询 PENDING 后无条件更新 RUNNING”不能作为多实例生产实现。目标链路以 ADR-0015 为准：
@@ -78,9 +78,9 @@ AgentMentioned
 
 ### 后端
 - `NoteCommentService.java` — @小智检测 + 软删子回复
-- `AgentInternalNoteController.java` — context + ai-replies 接口
-- `AgentCommentReplyWorker.java` — @Scheduled worker
-- `AgentServiceTokenSigner.java` — JWT 签名
+- `AgentInternalNoteController.java` — 统一评论资源的 context + 创建接口
+- `MentionReplyWorker.java` — RabbitMQ 执行 Worker
+- `ServiceAccessTokenService.java` — IAM Client Credentials 获取与到期前缓存刷新
 
 ## 已知问题
 

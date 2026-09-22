@@ -14,6 +14,7 @@ import java.time.Clock;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
+import jakarta.annotation.Resource;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -22,15 +23,10 @@ public class EntitlementService {
 
     static final String CONSUMER_NAME = "learning-entitlement-v1";
 
-    private final CourseEntitlementMapper entitlementMapper;
-    private final MessageInboxMapper inboxMapper;
-    private final Clock clock;
+    @Resource private CourseEntitlementMapper entitlementMapper;
+    @Resource private MessageInboxMapper inboxMapper;
+    @Resource private Clock clock;
 
-    public EntitlementService(CourseEntitlementMapper entitlementMapper, MessageInboxMapper inboxMapper, Clock clock) {
-        this.entitlementMapper = entitlementMapper;
-        this.inboxMapper = inboxMapper;
-        this.clock = clock;
-    }
 
     @Transactional
     public void grantFromGroup(GroupFormedEventDTO event) {

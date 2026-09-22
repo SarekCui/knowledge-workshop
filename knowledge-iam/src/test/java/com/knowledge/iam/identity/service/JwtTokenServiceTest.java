@@ -16,6 +16,7 @@ import javax.crypto.SecretKey;
 import javax.crypto.spec.SecretKeySpec;
 import org.junit.jupiter.api.Test;
 import org.springframework.security.oauth2.jwt.NimbusJwtEncoder;
+import org.springframework.test.util.ReflectionTestUtils;
 
 class JwtTokenServiceTest {
 
@@ -24,11 +25,11 @@ class JwtTokenServiceTest {
         Instant now = Instant.parse("2026-09-08T00:00:00Z");
         SecretKey key = new SecretKeySpec(
                 "local-test-secret-at-least-32-bytes-long".getBytes(StandardCharsets.UTF_8), "HmacSHA256");
-        JwtTokenService service = new JwtTokenService(
-                new NimbusJwtEncoder(new ImmutableSecret<>(key)),
-                Clock.fixed(now, ZoneOffset.UTC),
-                "knowledge-iam",
-                Duration.ofMinutes(30));
+        JwtTokenService service = new JwtTokenService();
+        ReflectionTestUtils.setField(service, "jwtEncoder", new NimbusJwtEncoder(new ImmutableSecret<>(key)));
+        ReflectionTestUtils.setField(service, "clock", Clock.fixed(now, ZoneOffset.UTC));
+        ReflectionTestUtils.setField(service, "issuer", "knowledge-iam");
+        ReflectionTestUtils.setField(service, "accessTokenTtl", Duration.ofMinutes(30));
 
         AccessTokenBO token = service.issue(
                 new AuthenticatedUserBO("user-001", "demo", List.of("LEARNER")));

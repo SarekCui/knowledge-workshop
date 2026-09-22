@@ -14,7 +14,7 @@ import com.knowledge.learning.note.dto.RenameNoteDTO;
 import com.knowledge.learning.note.dto.UpdateNoteDTO;
 import com.knowledge.learning.note.dto.ChangeNoteStatusDTO;
 import com.knowledge.learning.note.enums.NoteStatus;
-import org.springframework.beans.factory.annotation.Autowired;
+import jakarta.annotation.Resource;
 import java.time.Clock;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -26,17 +26,17 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class NoteService {
 
-    @Autowired
+    @Resource
     private NoteMapper noteMapper;
-    @Autowired
+    @Resource
     private CourseQueryService courseQueryService;
-    @Autowired
+    @Resource
     private EntitlementService entitlementService;
-    @Autowired
+    @Resource
     private NoteTagService noteTagService;
-    @Autowired
+    @Resource
     private NoteImageService noteImageService;
-    @Autowired
+    @Resource
     private Clock clock;
 
     @Transactional
@@ -58,7 +58,7 @@ public class NoteService {
         note.setUserId(userId);
         note.setCourseId(courseId);
         note.setChapterId(chapterId);
-        note.setClientRequestId(request.clientRequestId().trim());
+        note.setClientRequestId(request.idempotencyKey().trim());
         note.setTitle(normalizeTitle(request.title()));
         note.setContent(request.content().trim());
         note.setVideoPositionMs(request.videoPositionMs());
@@ -77,12 +77,12 @@ public class NoteService {
             noteImageService.syncReferences(userId, note.getId(), note.getContent());
             return NoteConverter.toBO(note, tags);
         } catch (DuplicateKeyException duplicate) {
-            NoteDO existing = noteMapper.findByRequest(userId, request.clientRequestId().trim());
+            NoteDO existing = noteMapper.findByRequest(userId, request.idempotencyKey().trim());
             List<String> existingTags = existing == null ? List.of() : noteTagService.find(existing.getId());
             if (existing != null && sameCreate(existing, note) && existingTags.equals(tags)) {
                 return NoteConverter.toBO(existing, existingTags);
             }
-            throw BusinessException.conflict("相同 clientRequestId 已用于其他笔记内容");
+            throw BusinessException.conflict("相同 idempotencyKey 已用于其他笔记内容");
         }
     }
 

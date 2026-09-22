@@ -15,13 +15,13 @@
 
 - MySQL `agent_run` 是运行状态、执行检查点和恢复信息的事实源；RabbitMQ 只负责唤醒 Worker、削峰和多实例负载分配。
 - learning 继续在评论事务内写 `AgentMentioned` Outbox。Agent 消费该事件时，在同一本地事务中写消费 Inbox、创建 `agent_run`，并写 Agent 自己的执行 Outbox；不得在 MQ 消费事务内直接调用模型。
-- Agent 执行 Outbox 通过 Publisher Confirm 将 `AgentRunRequested` 投递到独立执行队列。生产环境执行队列使用 RabbitMQ Quorum Queue、持久化消息、手动 ACK、有限 Prefetch 和 DLQ；本地环境允许单节点队列，但契约保持一致。
+- Agent 执行 Outbox 通过 Publisher Confirm 将 `ExecuteRun` 命令投递到独立执行队列。生产环境执行队列使用 RabbitMQ Quorum Queue、持久化消息、手动 ACK、有限 Prefetch 和 DLQ；本地环境允许单节点队列，但契约保持一致。
 - Worker 收到执行消息后仍必须使用数据库条件更新抢占运行，不能把“收到消息”等同于“拥有任务”。抢占条件至少包含运行 ID、允许的来源状态和执行版本。
 - `agent_run` 增加 `run_stage`、`lease_owner`、`lease_until`、`execution_version`、`next_retry_at`、阶段时间和错误分类。执行中按需要续租；租约过期的运行由恢复任务重新进入可执行状态。
 - 所有阶段更新携带 `execution_version` 作为 Fencing Token。租约失效后的旧 Worker 不得覆盖新 Worker 的状态或结果。
 - 运行生命周期状态为 `PENDING -> RUNNING -> SUCCEEDED`，可恢复失败进入 `RETRY_WAIT`，不可恢复或超过次数进入 `DEAD`；取消、超时分别进入 `CANCELLED`、`TIMED_OUT`。评论运行另外保存 `CONTEXT -> GENERATE -> PUBLISH` 阶段检查点，状态与阶段不得混为一个字段。
 - 模型回答必须在 `GENERATE -> PUBLISH` 阶段迁移时先持久化，再调用 learning 发布回复。发布失败保留 `PUBLISH` 阶段，只能重试发布，不得重新生成回答。
-- AI 回复使用 `AGENT_COMMENT_REPLY:{sourceCommentId}` 作为业务幂等键，并由 learning 的来源评论唯一索引兜底。MQ 重复投递、消费者重启和发布响应丢失不得产生第二条 AI 回复。
+- AI 回复使用 `agent:comment-reply:{sourceCommentId}` 作为业务幂等键，并由 learning 的来源评论唯一索引兜底。MQ 重复投递、消费者重启和发布响应丢失不得产生第二条 AI 回复。
 - 错误按阶段和类型分类：上下文/网络/限流等可恢复错误采用有界指数退避；权限失败、资源下架和非法输入不重试；模型结果是否已经产生不明确时不得无预算地自动重新生成。
 - RabbitMQ 4.1 使用 TTL 重试队列与 DLX 实现延迟重试；升级到支持内置延迟重试的版本前不得假设 Broker 已提供该能力。
 - 保留低频 Reconciliation Job，恢复租约过期运行、重新投递长期未执行的 Outbox、继续发布已持久化回答并标记超过上限的死任务。

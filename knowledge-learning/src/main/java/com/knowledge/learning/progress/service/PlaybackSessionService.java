@@ -13,7 +13,7 @@ import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.data.redis.core.script.DefaultRedisScript;
 import org.springframework.stereotype.Service;
 import org.springframework.dao.DataAccessException;
-import org.springframework.beans.factory.annotation.Autowired;
+import jakarta.annotation.Resource;
 
 @Service
 public class PlaybackSessionService {
@@ -38,13 +38,13 @@ public class PlaybackSessionService {
             redis.call('EXPIRE', KEYS[1], ARGV[4])
             return 1
             """, Long.class);
-    @Autowired
+    @Resource
     private StringRedisTemplate redisTemplate;
-    @Autowired
+    @Resource
     private CourseQueryService courseQueryService;
-    @Autowired
+    @Resource
     private EntitlementService entitlementService;
-    @Autowired
+    @Resource
     private ProgressQueryService progressQueryService;
 
     public PlaybackSessionBO start(String userId, String videoId) {

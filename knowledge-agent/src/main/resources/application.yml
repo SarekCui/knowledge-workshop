@@ -11,12 +11,20 @@ spring:
         server-addr: ${NACOS_SERVER_ADDR:127.0.0.1:8848}
         namespace: ${NACOS_NAMESPACE:public}
         group: ${NACOS_GROUP:DEFAULT_GROUP}
+    openfeign:
+      client:
+        config:
+          learningCommentFeignClient:
+            connectTimeout: ${AGENT_LEARNING_CONNECT_TIMEOUT_MS:3000}
+            readTimeout: ${AGENT_LEARNING_READ_TIMEOUT_MS:5000}
   datasource:
     url: ${AGENT_DB_URL:jdbc:mysql://localhost:3307/knowledge_agent?useUnicode=true&characterEncoding=utf8&serverTimezone=UTC}
     username: ${AGENT_DB_USERNAME:root}
     password: ${AGENT_DB_PASSWORD:root}
   rabbitmq:
     connection-timeout: 5s
+    publisher-confirm-type: correlated
+    publisher-returns: true
     host: ${RABBITMQ_HOST:localhost}
     port: ${RABBITMQ_PORT:5672}
     username: ${RABBITMQ_USERNAME:knowledge}
@@ -31,6 +39,8 @@ spring:
           initial-interval: 1s
           multiplier: 2
           max-interval: 5s
+    template:
+      mandatory: true
   flyway:
     enabled: true
 
@@ -42,6 +52,9 @@ mybatis-plus:
 
 knowledge:
   agent:
+    m2m:
+      client-id: ${AGENT_M2M_CLIENT_ID:knowledge-agent}
+      client-secret: ${AGENT_M2M_CLIENT_SECRET}
     model:
       enabled: ${AGENT_MODEL_ENABLED:false}
       base-url: ${DEEPSEEK_BASE_URL:https://api.deepseek.com/v1}
@@ -49,10 +62,19 @@ knowledge:
       name: ${DEEPSEEK_MODEL:deepseek-flash}
       timeout-seconds: ${AGENT_MODEL_TIMEOUT_SECONDS:30}
       max-output-tokens: ${AGENT_MODEL_MAX_OUTPUT_TOKENS:1200}
+    execution:
+      instance-id: ${AGENT_INSTANCE_ID:${HOSTNAME:local-agent}}
+      lease-seconds: ${AGENT_EXECUTION_LEASE_SECONDS:90}
+      lease-renew-interval-seconds: ${AGENT_LEASE_RENEW_INTERVAL_SECONDS:20}
+      max-attempts: ${AGENT_EXECUTION_MAX_ATTEMPTS:5}
   security:
     jwt:
       secret: ${JWT_SECRET}
       issuer: knowledge-iam
+    m2m:
+      issuer: ${IAM_M2M_ISSUER:http://localhost:8083}
+      jwk-set-uri: ${IAM_M2M_JWK_SET_URI:http://localhost:8083/oauth2/jwks}
+      expected-audience: knowledge-agent
 
 management:
   endpoints:

@@ -14,6 +14,7 @@ import com.knowledge.learning.progress.enums.ProgressStatus;
 import java.time.Clock;
 import java.time.LocalDateTime;
 import java.util.UUID;
+import jakarta.annotation.Resource;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -23,18 +24,11 @@ public class ProgressTransactionService {
     static final String CONSUMER_NAME = "learning-progress-v1";
     private static final long SEGMENT_MS = 10_000;
 
-    private final ProgressEventInboxMapper inboxMapper;
-    private final VideoProgressMapper progressMapper;
-    private final WatchedSegmentMapper segmentMapper;
-    private final Clock clock;
+    @Resource private ProgressEventInboxMapper inboxMapper;
+    @Resource private VideoProgressMapper progressMapper;
+    @Resource private WatchedSegmentMapper segmentMapper;
+    @Resource private Clock clock;
 
-    public ProgressTransactionService(ProgressEventInboxMapper inboxMapper, VideoProgressMapper progressMapper,
-                                      WatchedSegmentMapper segmentMapper, Clock clock) {
-        this.inboxMapper = inboxMapper;
-        this.progressMapper = progressMapper;
-        this.segmentMapper = segmentMapper;
-        this.clock = clock;
-    }
 
     @Transactional
     public VideoProgressBO process(VideoProgressReportedEventDTO event) {

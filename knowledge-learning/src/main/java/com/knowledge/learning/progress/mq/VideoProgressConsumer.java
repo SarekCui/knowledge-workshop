@@ -9,6 +9,7 @@ import com.knowledge.learning.progress.service.ProgressCacheService;
 import com.knowledge.learning.progress.service.ProgressTransactionService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import jakarta.annotation.Resource;
 import org.springframework.amqp.rabbit.annotation.RabbitListener;
 import org.springframework.dao.DataAccessException;
 import org.springframework.stereotype.Component;
@@ -18,16 +19,10 @@ public class VideoProgressConsumer {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(VideoProgressConsumer.class);
 
-    private final ObjectMapper objectMapper;
-    private final ProgressTransactionService transactionService;
-    private final ProgressCacheService cacheService;
+    @Resource private ObjectMapper objectMapper;
+    @Resource private ProgressTransactionService transactionService;
+    @Resource private ProgressCacheService cacheService;
 
-    public VideoProgressConsumer(ObjectMapper objectMapper, ProgressTransactionService transactionService,
-                                 ProgressCacheService cacheService) {
-        this.objectMapper = objectMapper;
-        this.transactionService = transactionService;
-        this.cacheService = cacheService;
-    }
 
     @RabbitListener(queues = LearningRabbitConfiguration.PROGRESS_QUEUE)
     public void consume(String payload) {

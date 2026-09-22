@@ -10,7 +10,7 @@ import java.util.Set;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.data.redis.core.script.DefaultRedisScript;
 import org.springframework.stereotype.Service;
-import org.springframework.beans.factory.annotation.Autowired;
+import jakarta.annotation.Resource;
 
 @Service
 public class ProgressCacheService {
@@ -35,7 +35,7 @@ public class ProgressCacheService {
             return 0
             """, Long.class);
 
-    @Autowired
+    @Resource
     private StringRedisTemplate redisTemplate;
 
     public boolean put(String userId, VideoProgressBO progress) {

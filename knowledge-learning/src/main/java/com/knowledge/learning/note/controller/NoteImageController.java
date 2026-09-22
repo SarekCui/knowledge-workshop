@@ -9,7 +9,7 @@ import com.knowledge.learning.note.vo.NoteImageVO;
 import com.knowledge.security.context.UserContext;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.constraints.Size;
-import org.springframework.beans.factory.annotation.Autowired;
+import jakarta.annotation.Resource;
 import org.springframework.http.MediaType;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -24,7 +24,7 @@ import org.springframework.web.multipart.MultipartFile;
 @RestController
 @RequestMapping("/api/learning/note-images")
 public class NoteImageController {
-    @Autowired
+    @Resource
     private NoteImageService noteImageService;
 
     @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)

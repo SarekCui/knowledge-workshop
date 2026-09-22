@@ -34,11 +34,24 @@
 
 这些能力必须在后续切片中独立设计、实现和验收，不能仅凭访问令牌实现宣称完成。
 
+## M2M 补充决策（第 5.8 轮）
+
+- `knowledge-agent` 调用 `knowledge-learning` 不再持有或使用用户 JWT 的 HS256 签名密钥。
+- IAM 基于 Spring Authorization Server 提供标准 `POST /oauth2/token` Client Credentials 端点；Agent 以 `client_id` 和独立的 `client_secret` 换取短期访问令牌，进程内复用到期前的令牌。
+- IAM 的 M2M 访问令牌使用 RS256 签名；RSA 私钥仅通过 `M2M_JWT_PRIVATE_KEY` 注入 IAM，资源服务经 IAM 的 `/oauth2/jwks` 获取并缓存公钥。`M2M_JWT_KEY_ID` 支持轮换期间按 `kid` 并存公钥。
+- M2M 令牌使用 URL 形式的独立 issuer，包含 `aud=knowledge-learning`、`client_id` 与最小 scope：`learning.comment.read`、`learning.comment.write`。Learning 的两个 Agent 内部端点分别校验对应 scope。
+- 既有用户会话暂保留 HS256，资源服务按签名算法区分用户会话与 RS256 工作负载令牌。这是兼容迁移，而非最终状态；所有用户 Token 迁移到非对称签名后再移除 HS256 decoder 和共享用户 JWT 密钥分发。
+
+## M2M 当前明确不包含
+
+- 客户端注册管理后台、客户端密钥自助轮换与数据库持久化注册表；当前仅注册受部署密钥管理的 `knowledge-agent` 工作负载客户端。
+- mTLS/SPIFFE、云工作负载身份联邦和跨集群零信任网络策略；它们可作为后续部署层的增强，不替代本决策中的 Token scope 与资源级授权。
+
 ## 影响
 
 - IAM 成为外部受保护接口的身份事实源；其数据库禁止被其他服务直接访问。
 - JWT 验证无需网关逐请求同步调用 IAM，但密钥轮换需要双密钥过渡或升级为非对称签名。
-- HS256 适合当前单环境作品化阶段；服务数量和密钥分发范围扩大时优先迁移到 RS256/ES256 与 JWKS。
+- HS256 仅保留给当前兼容中的用户会话；服务间工作负载访问已迁移到 RS256 与 JWKS。
 
 ## 验证方式
 
@@ -47,3 +60,4 @@
 - 重用旧刷新令牌后，同族的新令牌也无法继续刷新；重复注销返回成功。
 - 未携带、已过期或签名错误的令牌访问受保护 API 时，网关返回统一 401。
 - 合法 JWT 可以通过网关进入受保护路由，角色声明可供后续授权使用。
+- 正确的 Agent 客户端凭证可通过 `/oauth2/token` 获得 5 分钟 RS256 Token；错误凭证、错误 audience 或缺失评论 scope 均不能访问 Learning 的内部评论接口。

@@ -16,6 +16,7 @@ import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import java.util.List;
+import jakarta.annotation.Resource;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -30,16 +31,10 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/api/learning")
 public class ProgressController {
 
-    private final PlaybackSessionService sessionService;
-    private final ProgressService progressService;
-    private final ProgressQueryService queryService;
+    @Resource private PlaybackSessionService sessionService;
+    @Resource private ProgressService progressService;
+    @Resource private ProgressQueryService queryService;
 
-    public ProgressController(PlaybackSessionService sessionService, ProgressService progressService,
-                              ProgressQueryService queryService) {
-        this.sessionService = sessionService;
-        this.progressService = progressService;
-        this.queryService = queryService;
-    }
 
     @PostMapping("/videos/{videoId}/sessions")
     public Result<PlaybackSessionVO> startSession(@PathVariable String videoId,

@@ -2,7 +2,8 @@ package com.knowledge.learning.note.service;
 
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
-import com.knowledge.api.learning.dto.PublishAgentCommentReplyDTO;
+import com.knowledge.api.learning.dto.AgentCommentContextDTO;
+import com.knowledge.api.learning.dto.CreateNoteCommentDTO;
 import com.knowledge.common.exception.BusinessException;
 import com.knowledge.common.model.PageBO;
 import com.knowledge.learning.note.bo.NoteCommentBO;
@@ -12,7 +13,6 @@ import com.knowledge.learning.note.dao.mapper.NoteCommentLikeMapper;
 import com.knowledge.learning.note.dao.mapper.NoteMapper;
 import com.knowledge.learning.note.dao.model.NoteCommentDO;
 import com.knowledge.learning.note.dao.model.NoteDO;
-import com.knowledge.learning.note.dto.CreateNoteCommentDTO;
 import com.knowledge.learning.note.enums.NoteStatus;
 import com.knowledge.learning.note.enums.NoteCommentAuthorType;
 import java.time.Clock;
@@ -20,7 +20,7 @@ import java.time.LocalDateTime;
 import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
-import org.springframework.beans.factory.annotation.Autowired;
+import jakarta.annotation.Resource;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -29,15 +29,15 @@ public class NoteCommentService {
 
     private static final String XIAOZHI_AUTHOR_ID = "agent-xiaozhi";
 
-    @Autowired
+    @Resource
     private NoteMapper noteMapper;
-    @Autowired
+    @Resource
     private NoteCommentMapper commentMapper;
-    @Autowired
+    @Resource
     private NoteCommentLikeMapper commentLikeMapper;
-    @Autowired
+    @Resource
     private AgentMentionOutboxService agentMentionOutboxService;
-    @Autowired
+    @Resource
     private Clock clock;
 
     public PageBO<NoteCommentBO> page(String userId, String noteId, int pageNo, int pageSize) {
@@ -56,20 +56,36 @@ public class NoteCommentService {
                 pageNo, pageSize, result.getTotal());
     }
 
+    /**
+     * Supplies only the public Note and a live user comment to the internal Agent endpoint.
+     * Keeping this check in the domain service prevents an internal controller from bypassing
+     * Note visibility or accidentally grounding a reply in a comment from another Note.
+     */
+    public AgentCommentContextDTO loadAgentContext(String noteId, String commentId) {
+        NoteDO note = requirePublic(noteMapper.selectById(noteId));
+        NoteCommentDO comment = commentMapper.selectById(commentId);
+        if (comment == null || comment.getDeleted() != 0 || !note.getId().equals(comment.getNoteId())
+                || comment.getAuthorType() != NoteCommentAuthorType.USER) {
+            throw BusinessException.notFound("公开 Note 评论不存在");
+        }
+        return new AgentCommentContextDTO(emptyIfNull(note.getTitle()), emptyIfNull(note.getContent()),
+                emptyIfNull(comment.getContent()));
+    }
+
     @Transactional
     public NoteCommentBO create(String userId, String noteId, CreateNoteCommentDTO request) {
         requirePublic(noteMapper.selectActiveForUpdate(noteId));
-        String clientRequestId = request.clientRequestId().trim();
+        String idempotencyKey = request.idempotencyKey().trim();
         String parentId = normalizeNullable(request.parentCommentId());
         String content = request.content().trim();
-        NoteCommentDO existing = commentMapper.findByRequest(userId, clientRequestId);
+        NoteCommentDO existing = commentMapper.findByRequest(userId, idempotencyKey);
         if (existing != null) {
             if (existing.getDeleted() == 0 && existing.getNoteId().equals(noteId)
                     && Objects.equals(existing.getParentCommentId(), parentId)
                     && existing.getContent().equals(content)) {
                 return NoteEngagementConverter.toBO(existing, userId);
             }
-            throw BusinessException.conflict("相同 clientRequestId 已用于其他评论内容");
+            throw BusinessException.conflict("相同 idempotencyKey 已用于其他评论内容");
         }
         validateParent(noteId, parentId);
         NoteCommentDO comment = new NoteCommentDO();
@@ -78,7 +94,7 @@ public class NoteCommentService {
         comment.setUserId(userId);
         comment.setAuthorType(NoteCommentAuthorType.USER);
         comment.setParentCommentId(parentId);
-        comment.setClientRequestId(clientRequestId);
+        comment.setClientRequestId(idempotencyKey);
         comment.setContent(content);
         comment.setVersion(0);
         comment.setDeleted(0);
@@ -95,9 +111,12 @@ public class NoteCommentService {
 
     /** Called only through the authenticated Agent internal API. */
     @Transactional
-    public NoteCommentBO publishAgentReply(PublishAgentCommentReplyDTO request) {
-        String sourceCommentId = request.sourceCommentId().trim();
-        String noteId = request.noteId().trim();
+    public NoteCommentBO createAgentReply(String noteId, CreateNoteCommentDTO request) {
+        if (request.parentCommentId() == null || request.parentCommentId().isBlank()) {
+            throw BusinessException.badRequest("小智回复必须指定来源评论");
+        }
+        String sourceCommentId = request.parentCommentId().trim();
+        noteId = noteId.trim();
         String content = request.content().trim();
         requirePublic(noteMapper.selectActiveForUpdate(noteId));
         NoteCommentDO source = commentMapper.selectById(sourceCommentId);
@@ -118,7 +137,7 @@ public class NoteCommentService {
         reply.setAuthorType(NoteCommentAuthorType.AGENT);
         reply.setParentCommentId(source.getId());
         reply.setSourceCommentId(sourceCommentId);
-        reply.setClientRequestId(request.clientRequestId().trim());
+        reply.setClientRequestId(request.idempotencyKey().trim());
         reply.setContent(content);
         reply.setVersion(0);
         reply.setDeleted(0);
@@ -184,5 +203,9 @@ public class NoteCommentService {
 
     private boolean mentionsXiaozhi(String content) {
         return content.matches("(?s).*?(?<![A-Za-z0-9_])@小智(?![A-Za-z0-9_]).*");
+    }
+
+    private String emptyIfNull(String value) {
+        return value == null ? "" : value;
     }
 }

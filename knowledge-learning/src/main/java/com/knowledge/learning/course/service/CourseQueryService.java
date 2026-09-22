@@ -12,15 +12,15 @@ import com.knowledge.learning.course.dao.model.CourseDO;
 import com.knowledge.learning.course.enums.ChapterStatus;
 import com.knowledge.learning.course.enums.CourseStatus;
 import java.util.List;
-import org.springframework.beans.factory.annotation.Autowired;
+import jakarta.annotation.Resource;
 import org.springframework.stereotype.Service;
 
 @Service
 public class CourseQueryService {
 
-    @Autowired
+    @Resource
     private CourseMapper courseMapper;
-    @Autowired
+    @Resource
     private ChapterMapper chapterMapper;
 
     public List<CourseBO> listPublished() {

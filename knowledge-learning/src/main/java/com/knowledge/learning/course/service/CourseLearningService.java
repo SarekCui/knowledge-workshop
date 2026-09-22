@@ -10,20 +10,20 @@ import com.knowledge.learning.course.dao.model.CourseLearningDO;
 import com.knowledge.learning.entitlement.service.EntitlementService;
 import java.time.Clock;
 import java.time.LocalDateTime;
-import org.springframework.beans.factory.annotation.Autowired;
+import jakarta.annotation.Resource;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @Transactional(readOnly = true)
 public class CourseLearningService {
-    @Autowired
+    @Resource
     private CourseLearningMapper learningMapper;
-    @Autowired
+    @Resource
     private CourseQueryService courseQueryService;
-    @Autowired
+    @Resource
     private EntitlementService entitlementService;
-    @Autowired
+    @Resource
     private Clock clock;
 
     public CourseLearningBO get(String userId, String courseId) {

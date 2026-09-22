@@ -4,6 +4,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import com.knowledge.iam.identity.dto.LoginDTO;
 import com.knowledge.iam.identity.dto.RefreshTokenDTO;
+import java.security.KeyPairGenerator;
+import java.util.Base64;
 import java.util.Map;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -29,6 +31,9 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 class IamAcceptanceIT {
 
+    private static final String M2M_PRIVATE_KEY = generateM2mPrivateKey();
+    private static final String M2M_CLIENT_SECRET = "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef";
+
     @Container
     static final MySQLContainer<?> MYSQL = new MySQLContainer<>("mysql:8.4")
             .withDatabaseName("knowledge_iam")
@@ -42,6 +47,8 @@ class IamAcceptanceIT {
         registry.add("spring.datasource.password", MYSQL::getPassword);
         registry.add("spring.cloud.nacos.discovery.enabled", () -> "false");
         registry.add("knowledge.security.jwt.secret", () -> "local-test-secret-at-least-32-bytes-long");
+        registry.add("knowledge.security.m2m.rsa-private-key", () -> M2M_PRIVATE_KEY);
+        registry.add("knowledge.security.m2m.agent-client-secret", () -> M2M_CLIENT_SECRET);
         registry.add("knowledge.storage.enabled", () -> "false");
     }
 
@@ -98,6 +105,24 @@ class IamAcceptanceIT {
     }
 
     @Test
+    void issuesShortLivedScopedM2mTokenThroughStandardClientCredentialsEndpoint() {
+        HttpHeaders headers = new HttpHeaders();
+        headers.setBasicAuth("knowledge-agent", M2M_CLIENT_SECRET);
+        headers.setContentType(MediaType.APPLICATION_FORM_URLENCODED);
+        ResponseEntity<Map> response = restTemplate.exchange(
+                "http://localhost:" + port + "/oauth2/token", HttpMethod.POST,
+                new HttpEntity<>("grant_type=client_credentials&scope=learning.comment.read%20learning.comment.write",
+                        headers), Map.class);
+
+        assertThat(response.getStatusCode()).as("token response: %s", response.getBody()).isEqualTo(HttpStatus.OK);
+        assertThat(response.getBody()).containsEntry("token_type", "Bearer");
+        assertThat(((Number) response.getBody().get("expires_in")).longValue()).isBetween(295L, 300L);
+        assertThat(response.getBody().get("access_token").toString().split("\\.")).hasSize(3);
+        assertThat(restTemplate.getForEntity("http://localhost:" + port + "/oauth2/jwks", Map.class)
+                .getBody().get("keys")).isNotNull();
+    }
+
+    @Test
     void browserCookieRotatesAndLogoutPreventsRecoveryWithoutExposingRefreshToken() {
         ResponseEntity<Map> login = webRequest("login", new LoginDTO("demo", "Knowledge@123"), null);
         assertThat(login.getStatusCode()).isEqualTo(HttpStatus.OK);
@@ -138,6 +163,16 @@ class IamAcceptanceIT {
         if (cookie != null) headers.set(HttpHeaders.COOKIE, cookie);
         return restTemplate.exchange("http://localhost:" + port + "/api/iam/web/auth/" + action,
                 HttpMethod.POST, new HttpEntity<>(body, headers), Map.class);
+    }
+
+    private static String generateM2mPrivateKey() {
+        try {
+            KeyPairGenerator generator = KeyPairGenerator.getInstance("RSA");
+            generator.initialize(2048);
+            return Base64.getEncoder().encodeToString(generator.generateKeyPair().getPrivate().getEncoded());
+        } catch (Exception exception) {
+            throw new IllegalStateException(exception);
+        }
     }
 
     @Test

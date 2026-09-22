@@ -12,15 +12,15 @@ import org.springframework.amqp.rabbit.connection.CorrelationData;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.amqp.AmqpException;
-import org.springframework.beans.factory.annotation.Autowired;
+import jakarta.annotation.Resource;
 import org.springframework.beans.factory.annotation.Value;
 
 @Service
 public class ProgressEventPublisher {
 
-    @Autowired
+    @Resource
     private RabbitTemplate rabbitTemplate;
-    @Autowired
+    @Resource
     private ObjectMapper objectMapper;
     @Value("${knowledge.learning.progress.confirm-timeout-ms:5000}")
     private long confirmTimeoutMs;

@@ -15,7 +15,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
-import org.springframework.beans.factory.annotation.Autowired;
+import jakarta.annotation.Resource;
 import org.springframework.http.HttpHeaders;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -27,9 +27,9 @@ import org.springframework.web.bind.annotation.RestController;
 @Tag(name = "浏览器认证")
 public class WebAuthenticationController {
 
-    @Autowired
+    @Resource
     private AuthenticationService authenticationService;
-    @Autowired
+    @Resource
     private WebAuthCookieService cookieService;
 
     @PostMapping("/login")

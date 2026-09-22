@@ -2,12 +2,12 @@ package com.knowledge.learning.note.controller;
 
 import com.knowledge.api.common.Result;
 import com.knowledge.api.common.PageVO;
+import com.knowledge.api.learning.dto.CreateNoteCommentDTO;
 import com.knowledge.common.converter.PageConverter;
 import com.knowledge.common.exception.RequestIdFilter;
 import com.knowledge.learning.note.converter.NoteConverter;
 import com.knowledge.learning.note.converter.NoteEngagementConverter;
 import com.knowledge.learning.note.dto.ChangeNoteStatusDTO;
-import com.knowledge.learning.note.dto.CreateNoteCommentDTO;
 import com.knowledge.learning.note.dto.CreateNoteDTO;
 import com.knowledge.learning.note.dto.RenameNoteDTO;
 import com.knowledge.learning.note.dto.UpdateNoteDTO;
@@ -28,7 +28,7 @@ import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.PositiveOrZero;
 import jakarta.validation.constraints.Size;
 import java.util.List;
-import org.springframework.beans.factory.annotation.Autowired;
+import jakarta.annotation.Resource;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -46,15 +46,15 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/api/learning/notes")
 public class NoteController {
 
-    @Autowired
+    @Resource
     private NoteService noteService;
-    @Autowired
+    @Resource
     private NoteQueryService queryService;
-    @Autowired
+    @Resource
     private NoteEngagementService engagementService;
-    @Autowired
+    @Resource
     private NoteCommentService commentService;
-    @Autowired
+    @Resource
     private NoteCommentLikeService commentLikeService;
 
     @GetMapping("/public")

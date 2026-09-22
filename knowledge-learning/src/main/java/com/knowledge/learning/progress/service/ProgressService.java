@@ -20,26 +20,26 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.dao.DataAccessException;
 import org.springframework.stereotype.Service;
-import org.springframework.beans.factory.annotation.Autowired;
+import jakarta.annotation.Resource;
 
 @Service
 public class ProgressService {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(ProgressService.class);
 
-    @Autowired
+    @Resource
     private CourseQueryService courseQueryService;
-    @Autowired
+    @Resource
     private EntitlementService entitlementService;
-    @Autowired
+    @Resource
     private PlaybackSessionService sessionService;
-    @Autowired
+    @Resource
     private ProgressEventPublisher eventPublisher;
-    @Autowired
+    @Resource
     private ProgressCacheService cacheService;
-    @Autowired
+    @Resource
     private ProgressQueryService queryService;
-    @Autowired
+    @Resource
     private Clock clock;
 
     public ProgressReportBO report(String userId, String videoId, ReportProgressDTO request) {

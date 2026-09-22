@@ -5,6 +5,7 @@ import com.knowledge.iam.identity.bo.RefreshTokenBO;
 import com.knowledge.iam.identity.bo.RefreshTokenRotationBO;
 import com.knowledge.iam.identity.dao.mapper.RefreshTokenMapper;
 import com.knowledge.iam.identity.dao.model.RefreshTokenDO;
+import jakarta.annotation.Resource;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
@@ -25,21 +26,10 @@ public class RefreshTokenService {
 
     private static final String ACTIVE = "ACTIVE";
 
-    private final RefreshTokenMapper refreshTokenMapper;
-    private final Clock clock;
-    private final SecureRandom secureRandom;
-    private final Duration refreshTokenTtl;
-
-    public RefreshTokenService(
-            RefreshTokenMapper refreshTokenMapper,
-            Clock clock,
-            SecureRandom secureRandom,
-            @Value("${knowledge.security.jwt.refresh-token-ttl:30d}") Duration refreshTokenTtl) {
-        this.refreshTokenMapper = refreshTokenMapper;
-        this.clock = clock;
-        this.secureRandom = secureRandom;
-        this.refreshTokenTtl = refreshTokenTtl;
-    }
+    @Resource private RefreshTokenMapper refreshTokenMapper;
+    @Resource private Clock clock;
+    @Resource private SecureRandom secureRandom;
+    @Value("${knowledge.security.jwt.refresh-token-ttl:30d}") private Duration refreshTokenTtl;
 
     @Transactional
     public RefreshTokenBO issue(String userId) {

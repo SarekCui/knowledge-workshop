@@ -1,5 +1,6 @@
 package com.knowledge.api.learning.dto;
 
+import com.fasterxml.jackson.annotation.JsonAlias;
 import java.time.Instant;
 
 /**
@@ -15,5 +16,5 @@ public record AgentMentionedEventDTO(
         String noteId,
         String commentId,
         String parentCommentId,
-        String requesterId) {
+        @JsonAlias("requesterId") String userId) {
 }

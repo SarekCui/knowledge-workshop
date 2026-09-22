@@ -18,13 +18,22 @@ import java.time.LocalDateTime;
 import java.time.ZoneOffset;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
+import org.springframework.test.util.ReflectionTestUtils;
 
 class RefreshTokenServiceTest {
 
     private final RefreshTokenMapper mapper = mock(RefreshTokenMapper.class);
     private final Clock clock = Clock.fixed(Instant.parse("2026-09-08T00:00:00Z"), ZoneOffset.UTC);
-    private final RefreshTokenService service = new RefreshTokenService(
-            mapper, clock, new SecureRandom(), Duration.ofDays(30));
+    private final RefreshTokenService service = service();
+
+    private RefreshTokenService service() {
+        RefreshTokenService target = new RefreshTokenService();
+        ReflectionTestUtils.setField(target, "refreshTokenMapper", mapper);
+        ReflectionTestUtils.setField(target, "clock", clock);
+        ReflectionTestUtils.setField(target, "secureRandom", new SecureRandom());
+        ReflectionTestUtils.setField(target, "refreshTokenTtl", Duration.ofDays(30));
+        return target;
+    }
 
     @Test
     void rotatesActiveTokenAndLinksReplacement() {

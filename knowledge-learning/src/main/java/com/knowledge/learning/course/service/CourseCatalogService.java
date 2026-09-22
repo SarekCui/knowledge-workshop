@@ -17,16 +17,16 @@ import com.knowledge.learning.course.dao.model.CourseCategoryDO;
 import com.knowledge.learning.course.enums.ChapterStatus;
 import com.knowledge.learning.course.enums.CourseCategoryStatus;
 import java.util.List;
-import org.springframework.beans.factory.annotation.Autowired;
+import jakarta.annotation.Resource;
 import org.springframework.stereotype.Service;
 
 @Service
 public class CourseCatalogService {
-    @Autowired
+    @Resource
     private CourseCatalogMapper courseCatalogMapper;
-    @Autowired
+    @Resource
     private CourseCategoryMapper courseCategoryMapper;
-    @Autowired
+    @Resource
     private ChapterMapper chapterMapper;
 
     public List<CourseCategoryBO> categories() {

@@ -1,0 +1,10 @@
+# Copy this file to application-local.yml. Do not commit the copied file.
+# Store these values in a local secret file for development and in a secret manager in deployed environments.
+knowledge:
+  security:
+    jwt:
+      secret: ""
+    m2m:
+      # Base64-encoded PKCS#8 RSA private key. This must be available to IAM only.
+      rsa-private-key: ""
+      agent-client-secret: ""

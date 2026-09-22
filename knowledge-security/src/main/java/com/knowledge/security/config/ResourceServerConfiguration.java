@@ -8,6 +8,7 @@ import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.Collection;
+import java.util.ArrayList;
 import java.util.List;
 import javax.crypto.SecretKey;
 import javax.crypto.spec.SecretKeySpec;
@@ -25,6 +26,9 @@ import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.security.oauth2.jwt.JwtValidators;
 import org.springframework.security.oauth2.jwt.NimbusJwtDecoder;
+import org.springframework.security.oauth2.core.DelegatingOAuth2TokenValidator;
+import org.springframework.security.oauth2.core.OAuth2TokenValidator;
+import org.springframework.security.oauth2.core.OAuth2TokenValidatorResult;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationConverter;
 import org.springframework.security.web.SecurityFilterChain;
 
@@ -69,15 +73,21 @@ public class ResourceServerConfiguration {
     @ConditionalOnMissingBean(JwtDecoder.class)
     JwtDecoder jwtDecoder(
             @Value("${knowledge.security.jwt.secret}") String secret,
-            @Value("${knowledge.security.jwt.issuer:knowledge-iam}") String issuer) {
+            @Value("${knowledge.security.jwt.issuer:knowledge-iam}") String issuer,
+            @Value("${knowledge.security.m2m.issuer:http://localhost:8083}") String m2mIssuer,
+            @Value("${knowledge.security.m2m.jwk-set-uri:http://localhost:8083/oauth2/jwks}") String jwkSetUri,
+            @Value("${knowledge.security.m2m.expected-audience:${spring.application.name}}") String expectedAudience) {
         byte[] secretBytes = secret.getBytes(StandardCharsets.UTF_8);
         if (secretBytes.length < 32) {
             throw new IllegalArgumentException("JWT_SECRET must contain at least 32 bytes");
         }
         SecretKey secretKey = new SecretKeySpec(secretBytes, "HmacSHA256");
-        NimbusJwtDecoder decoder = NimbusJwtDecoder.withSecretKey(secretKey).build();
-        decoder.setJwtValidator(JwtValidators.createDefaultWithIssuer(issuer));
-        return decoder;
+        NimbusJwtDecoder userTokenDecoder = NimbusJwtDecoder.withSecretKey(secretKey).build();
+        userTokenDecoder.setJwtValidator(JwtValidators.createDefaultWithIssuer(issuer));
+        NimbusJwtDecoder workloadTokenDecoder = NimbusJwtDecoder.withJwkSetUri(jwkSetUri).build();
+        workloadTokenDecoder.setJwtValidator(new DelegatingOAuth2TokenValidator<>(
+                JwtValidators.createDefaultWithIssuer(m2mIssuer), audienceValidator(expectedAudience)));
+        return new HybridJwtDecoder(userTokenDecoder, workloadTokenDecoder);
     }
 
     private JwtAuthenticationConverter jwtAuthenticationConverter() {
@@ -87,11 +97,25 @@ public class ResourceServerConfiguration {
         return converter;
     }
 
-    private Collection<GrantedAuthority> authorities(Jwt jwt) {
+    Collection<GrantedAuthority> authorities(Jwt jwt) {
         List<String> roles = jwt.getClaimAsStringList("roles");
-        return (roles == null ? List.<String>of() : roles).stream()
-                .map(role -> (GrantedAuthority) new SimpleGrantedAuthority("ROLE_" + role))
-                .toList();
+        Object scopeClaim = jwt.getClaims().get("scope");
+        List<String> scopes = scopeClaim instanceof Collection<?> values
+                ? values.stream().map(String::valueOf).filter(scope -> !scope.isBlank()).toList()
+                : scopeClaim == null || scopeClaim.toString().isBlank()
+                        ? List.of() : List.of(scopeClaim.toString().split("\\s+"));
+        List<GrantedAuthority> authorities = new ArrayList<>();
+        (roles == null ? List.<String>of() : roles).forEach(
+                role -> authorities.add(new SimpleGrantedAuthority("ROLE_" + role)));
+        scopes.forEach(scope -> authorities.add(new SimpleGrantedAuthority("SCOPE_" + scope)));
+        return authorities;
+    }
+
+    private OAuth2TokenValidator<Jwt> audienceValidator(String expectedAudience) {
+        return token -> token.getAudience().contains(expectedAudience)
+                ? OAuth2TokenValidatorResult.success()
+                : OAuth2TokenValidatorResult.failure(new org.springframework.security.oauth2.core.OAuth2Error(
+                        "invalid_token", "Token audience does not match this service", null));
     }
 
     private void writeError(HttpServletResponse response, String requestId, ErrorCode errorCode,

@@ -17,7 +17,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import org.springframework.amqp.rabbit.connection.CorrelationData;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
-import org.springframework.beans.factory.annotation.Autowired;
+import jakarta.annotation.Resource;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
@@ -26,13 +26,13 @@ public class AgentMentionOutboxService {
 
     private static final int MAX_RETRY = 10;
 
-    @Autowired
+    @Resource
     private AgentMentionOutboxMapper outboxMapper;
-    @Autowired
+    @Resource
     private ObjectMapper objectMapper;
-    @Autowired
+    @Resource
     private RabbitTemplate rabbitTemplate;
-    @Autowired
+    @Resource
     private Clock clock;
     @Value("${knowledge.learning.agent-mention.confirm-timeout-ms:5000}")
     private long confirmTimeoutMs;

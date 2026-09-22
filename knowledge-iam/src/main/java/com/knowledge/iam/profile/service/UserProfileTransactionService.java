@@ -2,14 +2,14 @@ package com.knowledge.iam.profile.service;
 
 import com.knowledge.common.exception.BusinessException;
 import com.knowledge.iam.profile.dao.mapper.UserProfileMapper;
-import org.springframework.beans.factory.annotation.Autowired;
+import jakarta.annotation.Resource;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class UserProfileTransactionService {
 
-    @Autowired
+    @Resource
     private UserProfileMapper userProfileMapper;
 
     @Transactional

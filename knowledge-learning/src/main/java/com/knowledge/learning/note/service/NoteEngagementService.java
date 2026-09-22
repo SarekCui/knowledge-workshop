@@ -12,20 +12,20 @@ import com.knowledge.learning.note.enums.NoteStatus;
 import java.time.Clock;
 import java.time.LocalDateTime;
 import java.util.UUID;
-import org.springframework.beans.factory.annotation.Autowired;
+import jakarta.annotation.Resource;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class NoteEngagementService {
 
-    @Autowired
+    @Resource
     private NoteMapper noteMapper;
-    @Autowired
+    @Resource
     private NoteLikeMapper likeMapper;
-    @Autowired
+    @Resource
     private NoteFavoriteMapper favoriteMapper;
-    @Autowired
+    @Resource
     private Clock clock;
 
     public NoteEngagementBO get(String userId, String noteId) {

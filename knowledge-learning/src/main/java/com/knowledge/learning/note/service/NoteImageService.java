@@ -21,7 +21,7 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-import org.springframework.beans.factory.annotation.Autowired;
+import jakarta.annotation.Resource;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
@@ -35,15 +35,15 @@ public class NoteImageService {
     private static final Pattern INTERNAL_IMAGE = Pattern.compile(
             "!\\[[^\\]]*]\\(/api/learning/note-images/([0-9a-fA-F-]{36})(?:\\s+\"[^\"]*\")?\\)");
 
-    @Autowired
+    @Resource
     private NoteImageMapper noteImageMapper;
-    @Autowired
+    @Resource
     private NoteMapper noteMapper;
-    @Autowired
+    @Resource
     private NoteImageFileService fileService;
-    @Autowired
+    @Resource
     private NoteImageObjectStorage objectStorage;
-    @Autowired
+    @Resource
     private Clock clock;
 
     public NoteImageBO upload(String userId, MultipartFile file) {

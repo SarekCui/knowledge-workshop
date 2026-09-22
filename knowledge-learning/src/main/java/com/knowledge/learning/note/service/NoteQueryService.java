@@ -19,18 +19,18 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
-import org.springframework.beans.factory.annotation.Autowired;
+import jakarta.annotation.Resource;
 import org.springframework.stereotype.Service;
 
 @Service
 public class NoteQueryService {
-    @Autowired
+    @Resource
     private NoteMapper noteMapper;
-    @Autowired
+    @Resource
     private NoteTagService noteTagService;
-    @Autowired
+    @Resource
     private NoteLikeMapper noteLikeMapper;
-    @Autowired
+    @Resource
     private NoteFavoriteMapper noteFavoriteMapper;
 
     public NoteBO getPublic(String noteId) {

@@ -10,6 +10,7 @@ import com.knowledge.iam.identity.dao.mapper.UserAccountMapper;
 import com.knowledge.iam.identity.dao.mapper.UserRoleMapper;
 import com.knowledge.iam.identity.dao.model.UserAccountDO;
 import java.util.List;
+import jakarta.annotation.Resource;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -21,24 +22,12 @@ public class AuthenticationService {
     private static final String DUMMY_PASSWORD_HASH =
             "$2y$10$qN7NO4fUsdqGctuBbL1cmunHxshfCOIOnou/dLnAAzkTS7swkE.ge";
 
-    private final UserAccountMapper userAccountMapper;
-    private final UserRoleMapper userRoleMapper;
-    private final PasswordEncoder passwordEncoder;
-    private final JwtTokenService jwtTokenService;
-    private final RefreshTokenService refreshTokenService;
+    @Resource private UserAccountMapper userAccountMapper;
+    @Resource private UserRoleMapper userRoleMapper;
+    @Resource private PasswordEncoder passwordEncoder;
+    @Resource private JwtTokenService jwtTokenService;
+    @Resource private RefreshTokenService refreshTokenService;
 
-    public AuthenticationService(
-            UserAccountMapper userAccountMapper,
-            UserRoleMapper userRoleMapper,
-            PasswordEncoder passwordEncoder,
-            JwtTokenService jwtTokenService,
-            RefreshTokenService refreshTokenService) {
-        this.userAccountMapper = userAccountMapper;
-        this.userRoleMapper = userRoleMapper;
-        this.passwordEncoder = passwordEncoder;
-        this.jwtTokenService = jwtTokenService;
-        this.refreshTokenService = refreshTokenService;
-    }
 
     @Transactional
     public TokenPairBO login(String username, String password) {

@@ -10,7 +10,7 @@ import java.time.ZoneOffset;
 import java.util.UUID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
+import jakarta.annotation.Resource;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
 
@@ -20,7 +20,7 @@ public class DefaultNoteImageObjectStorage implements NoteImageObjectStorage {
     private static final Logger LOG = LoggerFactory.getLogger(DefaultNoteImageObjectStorage.class);
     private static final Duration URL_VALIDITY = Duration.ofHours(1);
 
-    @Autowired
+    @Resource
     private ObjectStorage objectStorage;
 
     @Override

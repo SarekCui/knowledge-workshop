@@ -9,5 +9,9 @@
     <artifactId>knowledge-api</artifactId>
     <dependencies>
         <dependency><groupId>org.springframework</groupId><artifactId>spring-web</artifactId></dependency>
+        <!-- Client declarations are cross-service contracts; this supplies only the Feign annotations, not its runtime starter. -->
+        <dependency><groupId>org.springframework.cloud</groupId><artifactId>spring-cloud-openfeign-core</artifactId></dependency>
+        <dependency><groupId>com.fasterxml.jackson.core</groupId><artifactId>jackson-annotations</artifactId></dependency>
+        <dependency><groupId>jakarta.validation</groupId><artifactId>jakarta.validation-api</artifactId></dependency>
     </dependencies>
 </project>

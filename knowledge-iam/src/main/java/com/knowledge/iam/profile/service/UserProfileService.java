@@ -15,22 +15,22 @@ import java.util.Map;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
-import org.springframework.beans.factory.annotation.Autowired;
+import jakarta.annotation.Resource;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
 @Service
 public class UserProfileService {
 
-    @Autowired
+    @Resource
     private UserProfileMapper userProfileMapper;
-    @Autowired
+    @Resource
     private UserAccountMapper userAccountMapper;
-    @Autowired
+    @Resource
     private UserProfileTransactionService transactionService;
-    @Autowired
+    @Resource
     private AvatarImageService avatarImageService;
-    @Autowired
+    @Resource
     private AvatarObjectStorage avatarObjectStorage;
 
     public UserProfileBO get(String userId) {

@@ -24,26 +24,26 @@ import com.knowledge.learning.progress.service.ProgressQueryService;
 import java.time.Clock;
 import java.time.LocalDateTime;
 import java.util.UUID;
-import org.springframework.beans.factory.annotation.Autowired;
+import jakarta.annotation.Resource;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class CourseManagementService {
 
-    @Autowired
+    @Resource
     private CourseMapper courseMapper;
-    @Autowired
+    @Resource
     private CourseCategoryMapper courseCategoryMapper;
-    @Autowired
+    @Resource
     private ChapterMapper chapterMapper;
-    @Autowired
+    @Resource
     private CourseQueryService queryService;
-    @Autowired
+    @Resource
     private NoteService noteService;
-    @Autowired
+    @Resource
     private ProgressQueryService progressQueryService;
-    @Autowired
+    @Resource
     private Clock clock;
 
     @Transactional

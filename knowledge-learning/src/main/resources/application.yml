@@ -80,6 +80,10 @@ knowledge:
     jwt:
       secret: ${JWT_SECRET}
       issuer: knowledge-iam
+    m2m:
+      issuer: ${IAM_M2M_ISSUER:http://localhost:8083}
+      jwk-set-uri: ${IAM_M2M_JWK_SET_URI:http://localhost:8083/oauth2/jwks}
+      expected-audience: knowledge-learning
 
 management:
   endpoints:

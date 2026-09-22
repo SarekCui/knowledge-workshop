@@ -30,10 +30,10 @@ Agent 使用服务间认证调用 `knowledge-learning`，调用方身份、用�
 | 公共资料复核 | `POST /internal/agent/public-resources/resolve` | 输入来源 ID 和版本，learning 仅返回当前仍为 PUBLIC 且未删除的片段与可引用标题/链接 |
 | 私人学习上下文 | `GET /internal/agent/users/{userId}/learning-context` | 仅返回调用用户已获权益课程、当前章节和进度摘要；不返回订单或积分 |
 | 私人 Note | `POST /internal/agent/users/{userId}/notes/query` | 仅查询调用用户自己的 Note，分页有界，默认只返回标题和命中片段 |
-| 公开评论上下文 | `GET /internal/agent/public-notes/{noteId}/comments/{commentId}/thread` | 仅公开 Note；限定当前评论、父评论和最多 20 条相邻回复 |
-| AI 回复发布 | `POST /internal/agent/comments/ai-replies` | 必须包含业务幂等键、来源评论、正文、引用；learning 校验 Note 仍公开并保存 AI 作者标识 |
+| 公开评论上下文 | `GET /internal/notes/{noteId}/comments/{commentId}/agent-context` | 仅公开 Note；返回笔记标题、正文与来源评论 |
+| AI 回复发布 | `POST /internal/notes/{noteId}/comments` | 与用户评论复用 `CreateNoteCommentDTO`；`parentCommentId` 为来源评论，learning 从服务身份确定 AI 作者并校验 Note 仍公开 |
 
-所有响应包含来源资源 ID、版本和可见性。Agent 无论检索来源为何，都在生成前调用公共资料复核接口；复核失败的片段不得进入 Prompt 或引用。
+Agent 使用 OpenFeign 经 Nacos 服务名调用 learning；Client 只声明上述内部契约，`LearningCommentService` 负责结果解包和调用编排。Feign 请求拦截器从 IAM 的标准 Client Credentials 端点获取并缓存 5 分钟 RS256 服务令牌，到期前 30 秒刷新；令牌限定 `aud=knowledge-learning`，读取与写回分别要求 `learning.comment.read`、`learning.comment.write` scope。连接/读取超时默认分别为 3/5 秒且不做透明重试；运行状态机负责有界恢复。Agent 无论检索来源为何，都在生成前调用公共资料复核接口；复核失败的片段不得进入 Prompt 或引用。
 
 ## 3. `AgentMentioned` 事件与可靠性
 
@@ -49,7 +49,7 @@ learning 在写入公开评论的同一 MySQL 事务中写 Outbox。事件只携
   "noteId": "noteId",
   "commentId": "commentId",
   "parentCommentId": "optional",
-  "requesterId": "userId"
+  "userId": "userId"
 }
 ```
 
@@ -57,7 +57,7 @@ Agent 接收 `AgentMentioned` 后执行以下本地事务：
 
 1. 以 `(eventId, consumer)` 写 Inbox 去重；
 2. 以 `sourceCommentId` 唯一约束创建 `agent_run`；
-3. 写 `agent_execution_outbox`，准备投递 `AgentRunRequested`；
+3. 写 `agent_execution_outbox`，准备投递 `ExecuteRun` 命令；
 4. 提交成功后 ACK `AgentMentioned`，不得在该消费事务中调用模型。
 
 执行 Outbox 通过 Publisher Confirm 投递到独立 RabbitMQ 执行队列。生产队列采用 Quorum Queue、持久化消息、手动 ACK、有限 Prefetch 和 DLQ；当前 RabbitMQ 4.1 使用 TTL 重试队列与 DLX 实现延迟退避。Worker 收到执行消息后仍需通过数据库条件更新抢占运行：
@@ -66,10 +66,8 @@ Agent 接收 `AgentMentioned` 后执行以下本地事务：
 
 ```json
 {
-  "messageId": "UUID",
-  "messageType": "AgentRunRequested",
-  "schemaVersion": 1,
-  "occurredAt": "2026-09-18T00:00:00Z",
+  "commandId": "UUID",
+  "createdAt": "2026-09-18T00:00:00Z",
   "runId": "UUID",
   "runType": "COMMENT_REPLY"
 }
@@ -110,7 +108,7 @@ stage:  CONTEXT -> GENERATE -> PUBLISH
 
 `agent_run` 至少保存 `status`、`run_stage`、`lease_owner`、`lease_until`、`execution_version`、`attempt_count`、`next_retry_at`、`answer`、`last_error_code`、`last_error_summary` 及各阶段时间。`last_error_summary` 必须脱敏，不保存完整 Prompt、令牌或供应商响应体。
 
-模型回答在 `GENERATE -> PUBLISH` 阶段迁移时先持久化，再使用 `AGENT_COMMENT_REPLY:{sourceCommentId}` 幂等键发布。发布失败保留 `PUBLISH` 阶段，只重试发布，不得重新调用模型；learning 继续以来源评论唯一索引兜底。资源已下架、权限失败和非法输入不重试；网络、限流等可恢复错误有界退避，超过上限进入 DLQ 与 `DEAD`。低频 Reconciliation Job 恢复租约过期、长期未投递和已有回答但未发布的运行。原评论始终保持发布成功。
+模型回答在 `GENERATE -> PUBLISH` 阶段迁移时先持久化，再使用 `agent:comment-reply:{sourceCommentId}` 幂等键发布。发布失败保留 `PUBLISH` 阶段，只重试发布，不得重新调用模型；learning 继续以来源评论唯一索引兜底。资源已下架、权限失败和非法输入不重试；网络、限流等可恢复错误有界退避，达到配置的最大尝试次数（默认 5）进入 `DEAD`，并由后续 DLQ 重放能力统一处置。低频 Reconciliation Job 恢复租约过期、长期未投递和已有回答但未发布的运行。原评论始终保持发布成功。
 
 ## 4. 右侧 SSE 契约
 
@@ -120,7 +118,8 @@ POST /api/agent/conversations/{conversationId}/messages/stream
 POST /api/agent/runs/{runId}/cancel
 ```
 
-消息请求含 `clientRequestId` UUID、问题和页面上下文提示。相同会话同时只允许一个运行；冲突返回 409。SSE 仅输出以下业务事件，不透传模型协议和思维链：
+消息请求含客户端生成的 `idempotencyKey`、问题和页面上下文提示。键格式为
+`调用方:操作:稳定标识`，右侧问答使用 `web:chat-send:{uuid}`，同一逻辑提问重试时原样复用。相同会话同时只允许一个运行；冲突返回 409。SSE 仅输出以下业务事件，不透传模型协议和思维链：
 
 ```text
 run.started       { runId }
@@ -147,7 +146,7 @@ answer.failed     { code, retryable }
 ## 5. 实施顺序与验收门槛
 
 1. 修复评论上下文接口的 PUBLIC、删除状态和 Note/评论归属校验；修复关闭模型时服务无法启动及 Agent 集成测试未进入默认测试的问题。
-2. 建立统一 Run 状态机、Agent 执行 Outbox、Quorum 执行队列、数据库条件抢占、Lease/Fencing Token、阶段重试、DLQ 与 Reconciliation Job。
+2. 已建立评论 Run 的首版状态机、Agent 执行 Outbox、Quorum 执行队列、数据库条件抢占、Lease/Fencing Token、租约续期、10/60/300 秒 TTL 重试队列与 Reconciliation Job；下一步验证模型调用/发布失败后的检查点恢复，补齐 DLQ 重放。
 3. 将 Prompt、模型调用、SSE 和状态迁移从 Controller 下沉至运行编排层；验证断开只结束传输，最终运行仍可查询。
 4. 将持久化历史转换为有界 Chat Memory，补齐取消、超时、幂等重放、历史分页和留存。
 5. 建立课程/章节/PUBLIC Note 索引事件、语义切分、Qdrant upsert/delete 和带来源回答。

@@ -14,6 +14,7 @@ import com.knowledge.learning.course.vo.CourseVO;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.PositiveOrZero;
+import jakarta.annotation.Resource;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -32,11 +33,8 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/api/learning/admin")
 public class CourseAdminController {
 
-    private final CourseManagementService managementService;
+    @Resource private CourseManagementService managementService;
 
-    public CourseAdminController(CourseManagementService managementService) {
-        this.managementService = managementService;
-    }
 
     @PostMapping("/courses")
     public Result<CourseVO> createCourse(@Valid @RequestBody CreateCourseDTO request,

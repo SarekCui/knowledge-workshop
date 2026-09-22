@@ -12,6 +12,7 @@ import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
+import jakarta.annotation.Resource;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -22,11 +23,8 @@ import org.springframework.web.bind.annotation.RestController;
 @Tag(name = "身份认证", description = "用户登录、令牌刷新与注销接口")
 public class AuthenticationController {
 
-    private final AuthenticationService authenticationService;
+    @Resource private AuthenticationService authenticationService;
 
-    public AuthenticationController(AuthenticationService authenticationService) {
-        this.authenticationService = authenticationService;
-    }
 
     @PostMapping("/login")
     @Operation(summary = "账号密码登录", description = "校验 BCrypt 密码并签发短期 Bearer JWT")

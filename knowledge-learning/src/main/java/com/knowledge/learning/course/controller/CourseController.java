@@ -10,7 +10,7 @@ import com.knowledge.learning.course.vo.CourseVO;
 import com.knowledge.security.context.UserContext;
 import jakarta.servlet.http.HttpServletRequest;
 import java.util.List;
-import org.springframework.beans.factory.annotation.Autowired;
+import jakarta.annotation.Resource;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -20,9 +20,9 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/api/learning/courses")
 public class CourseController {
 
-    @Autowired
+    @Resource
     private CourseQueryService queryService;
-    @Autowired
+    @Resource
     private EntitlementService entitlementService;
 
     @GetMapping

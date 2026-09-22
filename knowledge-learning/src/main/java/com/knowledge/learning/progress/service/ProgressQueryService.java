@@ -16,7 +16,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 import org.springframework.stereotype.Service;
-import org.springframework.beans.factory.annotation.Autowired;
+import jakarta.annotation.Resource;
 import org.springframework.dao.DataAccessException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -25,15 +25,15 @@ import org.slf4j.LoggerFactory;
 public class ProgressQueryService {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(ProgressQueryService.class);
-    @Autowired
+    @Resource
     private VideoProgressMapper progressMapper;
-    @Autowired
+    @Resource
     private ProgressCacheService cacheService;
-    @Autowired
+    @Resource
     private CourseQueryService courseQueryService;
-    @Autowired
+    @Resource
     private EntitlementService entitlementService;
-    @Autowired
+    @Resource
     private Clock clock;
 
     public VideoProgressBO get(String userId, String videoId) {

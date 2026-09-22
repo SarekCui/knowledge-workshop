@@ -44,6 +44,15 @@ knowledge:
       issuer: knowledge-iam
       access-token-ttl: 30m
       refresh-token-ttl: 30d
+    m2m:
+      issuer: ${IAM_M2M_ISSUER:http://localhost:8083}
+      # PKCS#8 RSA private key supplied by the deployment secret store; IAM alone can read it.
+      rsa-private-key: ${M2M_JWT_PRIVATE_KEY}
+      key-id: ${M2M_JWT_KEY_ID:iam-m2m-2026-01}
+      agent-client-id: ${AGENT_M2M_CLIENT_ID:knowledge-agent}
+      agent-client-secret: ${AGENT_M2M_CLIENT_SECRET}
+      access-token-ttl: ${M2M_ACCESS_TOKEN_TTL:5m}
+      audience: knowledge-learning
 
 management:
   endpoints:

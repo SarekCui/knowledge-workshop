@@ -20,6 +20,7 @@ import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.test.util.ReflectionTestUtils;
 
 class AuthenticationServiceTest {
 
@@ -28,8 +29,17 @@ class AuthenticationServiceTest {
     private final PasswordEncoder passwordEncoder = mock(PasswordEncoder.class);
     private final JwtTokenService jwtTokenService = mock(JwtTokenService.class);
     private final RefreshTokenService refreshTokenService = mock(RefreshTokenService.class);
-    private final AuthenticationService service = new AuthenticationService(
-            userAccountMapper, userRoleMapper, passwordEncoder, jwtTokenService, refreshTokenService);
+    private final AuthenticationService service = service();
+
+    private AuthenticationService service() {
+        AuthenticationService target = new AuthenticationService();
+        ReflectionTestUtils.setField(target, "userAccountMapper", userAccountMapper);
+        ReflectionTestUtils.setField(target, "userRoleMapper", userRoleMapper);
+        ReflectionTestUtils.setField(target, "passwordEncoder", passwordEncoder);
+        ReflectionTestUtils.setField(target, "jwtTokenService", jwtTokenService);
+        ReflectionTestUtils.setField(target, "refreshTokenService", refreshTokenService);
+        return target;
+    }
 
     @Test
     void issuesTokenForEnabledAccountWithValidPassword() {

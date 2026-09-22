@@ -15,7 +15,7 @@
 - 新增 Java 17 + Spring Boot 服务 `knowledge-agent`，基础包使用 `com.knowledge.agent`。
 - 使用 LangChain4j 作为首选 Agent 编排框架；业务层通过项目自定义的 `AgentModelService` 端口隔离框架类型。
 - Agent 服务拥有独立 `agent_db`，保存会话、消息、运行、工具调用摘要、回答引用、Prompt/模型版本、Token 用量及消费幂等记录。
-- 课程、Note、评论、进度、订单、积分、权益和用户资料继续归原服务所有；Agent 通过受鉴权内部 API 或事件访问，禁止跨服务访问数据库。
+- 课程、Note、评论、进度、订单、积分、权益和用户资料继续归原服务所有；Agent 通过受鉴权内部 API 或事件访问，禁止跨服务访问数据库。Agent 到 learning 的同步内部调用使用 OpenFeign 经 Nacos 服务名 `knowledge-learning` 发现；Feign Client 只声明远程契约，业务调用由 Agent Service 封装。
 - 右侧问答使用经网关鉴权的 SSE 流式响应；客户端页面上下文只作为提示，资源可见性由服务端重新校验。
 - 评论区 `@小智` 由 learning 在评论本地事务中写入 `AgentMentioned` Outbox，经 RabbitMQ 至少一次投递；Agent 幂等消费并通过 learning 内部接口幂等发布带 AI 标识的回复。
 - 私人问答与公开评论使用不同工具白名单。公开评论只能访问公开资料，不得访问提问者私人 Note、进度、订单或积分。

@@ -1,6 +1,9 @@
 # Copy this file to application-local.yml, then set DEEPSEEK_API_KEY below.
+# AGENT_M2M_CLIENT_SECRET must match IAM. The RSA private key belongs only to IAM.
 knowledge:
   agent:
+    m2m:
+      client-secret: ""
     model:
       enabled: true
       api-key: ""

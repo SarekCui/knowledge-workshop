@@ -11,7 +11,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
-import org.springframework.beans.factory.annotation.Autowired;
+import jakarta.annotation.Resource;
 import org.springframework.stereotype.Service;
 
 @Service
@@ -19,9 +19,9 @@ public class NoteTagService {
     private static final int MAX_TAGS = 5;
     private static final int MAX_TAG_LENGTH = 20;
 
-    @Autowired
+    @Resource
     private NoteTagMapper noteTagMapper;
-    @Autowired
+    @Resource
     private Clock clock;
 
     public List<String> normalize(List<String> tags) {

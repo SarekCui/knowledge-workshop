@@ -6,8 +6,9 @@ import static org.awaitility.Awaitility.await;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.knowledge.api.learning.dto.AgentCommentContextDTO;
 import com.knowledge.api.learning.dto.AgentMentionedEventDTO;
-import com.knowledge.api.learning.dto.PublishAgentCommentReplyDTO;
+import com.knowledge.api.learning.dto.CreateNoteCommentDTO;
 import com.knowledge.api.learning.dto.PlayedRangeEventDTO;
 import com.knowledge.api.learning.dto.VideoProgressReportedEventDTO;
 import com.knowledge.api.marketing.dto.GroupFormedEventDTO;
@@ -24,7 +25,6 @@ import com.knowledge.learning.note.dao.mapper.NoteImageMapper;
 import com.knowledge.learning.note.dto.ChangeNoteStatusDTO;
 import com.knowledge.learning.note.enums.NoteStatus;
 import com.knowledge.learning.note.enums.NoteSort;
-import com.knowledge.learning.note.dto.CreateNoteCommentDTO;
 import com.knowledge.learning.note.service.NoteCommentService;
 import com.knowledge.learning.note.service.NoteCommentLikeService;
 import com.knowledge.learning.note.service.NoteEngagementService;
@@ -227,7 +227,7 @@ class LearningAcceptanceIT {
         assertThat(noteQueryService.getPublic(published.id()).tags()).containsExactly("Spring Boot", "Redisson");
         assertThatThrownBy(() -> noteService.create("user-b", new CreateNoteDTO(
                 "tag-request-1", null, null, "分布式锁实践", "锁的实现细节", null, List.of("MySQL"))))
-                .isInstanceOf(BusinessException.class).hasMessageContaining("clientRequestId");
+                .isInstanceOf(BusinessException.class).hasMessageContaining("idempotencyKey");
     }
 
     @Test
@@ -480,7 +480,7 @@ class LearningAcceptanceIT {
         assertThat(event.aggregateId()).isEqualTo(comment.id());
         assertThat(event.noteId()).isEqualTo(published.id());
         assertThat(event.commentId()).isEqualTo(comment.id());
-        assertThat(event.requesterId()).isEqualTo("user-a");
+        assertThat(event.userId()).isEqualTo("user-a");
 
         assertThat(agentMentionOutboxService.dispatchBatch(10)).isEqualTo(1);
         await().atMost(Duration.ofSeconds(5)).untilAsserted(() ->
@@ -499,10 +499,9 @@ class LearningAcceptanceIT {
         var source = noteCommentService.create("user-a", published.id(),
                 new CreateNoteCommentDTO("agent-reply-source", null, "请解释这个概念"));
 
-        var request = new PublishAgentCommentReplyDTO("AGENT_COMMENT_REPLY:" + source.id(), published.id(),
-                source.id(), "这是小智的解释。");
-        var reply = noteCommentService.publishAgentReply(request);
-        assertThat(noteCommentService.publishAgentReply(request).id()).isEqualTo(reply.id());
+        var request = new CreateNoteCommentDTO("agent:comment-reply:" + source.id(), source.id(), "这是小智的解释。");
+        var reply = noteCommentService.createAgentReply(published.id(), request);
+        assertThat(noteCommentService.createAgentReply(published.id(), request).id()).isEqualTo(reply.id());
         assertThat(reply).extracting("authorId", "authorType", "sourceCommentId", "owned")
                 .containsExactly("agent-xiaozhi", com.knowledge.learning.note.enums.NoteCommentAuthorType.AGENT,
                         source.id(), true);
@@ -511,9 +510,38 @@ class LearningAcceptanceIT {
                 .singleElement()
                 .extracting("authorType", "sourceCommentId")
                 .containsExactly(com.knowledge.learning.note.enums.NoteCommentAuthorType.AGENT, source.id());
-        assertThatThrownBy(() -> noteCommentService.publishAgentReply(new PublishAgentCommentReplyDTO(
-                "AGENT_COMMENT_REPLY:" + source.id(), published.id(), source.id(), "不同内容")))
+        assertThatThrownBy(() -> noteCommentService.createAgentReply(published.id(), new CreateNoteCommentDTO(
+                "agent:comment-reply:" + source.id(), source.id(), "不同内容")))
                 .isInstanceOf(BusinessException.class);
+    }
+
+    @Test
+    void agentContextOnlyExposesTheMatchingLiveUserCommentOnAPublicNote() {
+        var draft = noteService.create("user-b", new CreateNoteDTO(
+                "agent-context-note", null, null, "小智上下文", "只应读取公开笔记正文", null));
+        var published = noteService.changeStatus("user-b", draft.id(),
+                new ChangeNoteStatusDTO(NoteStatus.PUBLIC, 0));
+        var source = noteCommentService.create("user-a", published.id(),
+                new CreateNoteCommentDTO("agent-context-comment", null, "请解释这个概念"));
+        AgentCommentContextDTO context = noteCommentService.loadAgentContext(published.id(), source.id());
+        assertThat(context).extracting(AgentCommentContextDTO::noteTitle, AgentCommentContextDTO::noteContent,
+                AgentCommentContextDTO::commentContent)
+                .containsExactly("小智上下文", "只应读取公开笔记正文", "请解释这个概念");
+
+        var otherDraft = noteService.create("user-b", new CreateNoteDTO(
+                "agent-context-other", null, null, "另一篇", "不应泄漏", null));
+        assertThatThrownBy(() -> noteCommentService.loadAgentContext(otherDraft.id(), source.id()))
+                .isInstanceOf(BusinessException.class).hasMessageContaining("公开 Note");
+
+        var otherPublished = noteService.changeStatus("user-b", otherDraft.id(),
+                new ChangeNoteStatusDTO(NoteStatus.PUBLIC, 0));
+        assertThatThrownBy(() -> noteCommentService.loadAgentContext(otherPublished.id(), source.id()))
+                .isInstanceOf(BusinessException.class).hasMessageContaining("评论不存在");
+
+        var agentReply = noteCommentService.createAgentReply(published.id(), new CreateNoteCommentDTO(
+                "agent:comment-reply:agent-context", source.id(), "小智回复"));
+        assertThatThrownBy(() -> noteCommentService.loadAgentContext(published.id(), agentReply.id()))
+                .isInstanceOf(BusinessException.class).hasMessageContaining("评论不存在");
     }
 
     @Test

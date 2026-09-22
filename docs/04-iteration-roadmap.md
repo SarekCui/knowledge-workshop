@@ -183,7 +183,7 @@
 - 公共资料向量存储确定采用 Qdrant，Embedding 采用百炼 `text-embedding-v4` 1024 维；语义切分、混合检索和重排仍需固定评估集验证，当前不得表述为已经实现。
 - Agent 异步运行确定采用 MySQL 持久化状态机 + Agent 执行 Outbox + RabbitMQ Quorum 执行队列；运行通过数据库条件抢占、Lease 与 Fencing Token 防止多实例重复执行，生成与发布按检查点分别恢复。
 - 初步方案见 `docs/19-xiaozhi-agent-initial-design.md`、ADR-0014 和 ADR-0015。
-- 当前已完成独立 `knowledge-agent` 的无 RAG 流式问答原型、会话/消息持久化与历史界面、learning 评论 Outbox、消费幂等骨架及评论实际生成链路；上述企业级运行分发与恢复仍为目标设计，尚未实现。RAG、来源引用、取消/断线恢复、模型 Memory、成本限制和网关端到端验收仍未完成。
+- 当前已完成独立 `knowledge-agent` 的无 RAG 流式问答原型、会话/消息持久化与历史界面、learning 评论 Outbox、消费幂等骨架及评论实际生成链路；评论运行已完成首版 Agent 执行 Outbox、Quorum 执行队列、手动 ACK、条件抢占、Lease/Fencing Token、`CONTEXT/GENERATE/PUBLISH` 检查点、默认 5 次上限的 10/60/300 秒 TTL 重试队列、租约续期与低频恢复任务。Agent 到 learning 已采用 IAM OAuth2 Client Credentials、RS256/JWKS、audience 与最小 scope 授权；用户会话 HS256 仍处于兼容迁移期。模型真实调用、发布失败恢复与死信重放尚未形成完整验收；RAG、来源引用、取消/断线恢复、模型 Memory、成本限制和网关端到端验收仍未完成。
 
 ### 5.8 验收入口条件
 
@@ -241,5 +241,5 @@
 | 3.6 HTTP 接口基础设施 | 已完成 | OpenAPI 契约完成 | 统一 `Result<T>`、HTTP 状态映射、请求 ID、按领域分包与 DO/DTO/BO/VO 规范，见 `docs/acceptance/round-3.6-http-and-layering.md` |
 | 4 服务治理 | 暂告一段落 | 核心链路稳定 | 已接入 Nacos、网关路由、IAM、双层 JWT 验签、资源授权、刷新令牌轮换与注销、网关容错及结构化日志；指标、追踪与容错监控保留到真实学习链路形成后实施，见 ADR-0007—0009 及第 4.2—4.6 轮验收记录 |
 | 5 课程社区后台 | 进行中 | 简历三个亮点验收 | 5.1 三批学习主线通过 6 个 Testcontainers 场景；5.2 补齐营销查询与运营接口，见 `docs/acceptance/round-5.1-learning-core.md`、`docs/acceptance/round-5.2-marketing-operations.md`；社区与积分赛季运营后台待实现 |
-| 5.8 小智 AI Agent | 进行中 | ADR-0014、ADR-0015 已接受且关键选型完成 | 已有服务端无 RAG SSE、会话历史、评论生成链路和全局右侧问答前端原型；MySQL 状态机 + RabbitMQ 执行队列、RAG、来源引用、恢复与治理仍待实现，完整验收以 `docs/19-xiaozhi-agent-initial-design.md`、`docs/20-xiaozhi-agent-contract-and-prototype-plan.md` 为准 |
+| 5.8 小智 AI Agent | 进行中 | ADR-0014、ADR-0015 已接受且关键选型完成 | 已有服务端无 RAG SSE、会话历史、评论生成链路、执行 Outbox、MySQL 条件抢占与 RabbitMQ 执行队列的首版实现；RAG、来源引用、模型调用/发布恢复的完整故障验收及治理仍待实现，完整验收以 `docs/19-xiaozhi-agent-initial-design.md`、`docs/20-xiaozhi-agent-contract-and-prototype-plan.md` 为准 |
 | 6 作品化交付 | 未开始 | 功能范围冻结 | 演示、压测、报告 |

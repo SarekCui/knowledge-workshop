@@ -2,6 +2,7 @@ package com.knowledge.iam.identity.service;
 
 import com.knowledge.iam.identity.bo.AccessTokenBO;
 import com.knowledge.iam.identity.bo.AuthenticatedUserBO;
+import jakarta.annotation.Resource;
 import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
@@ -17,21 +18,10 @@ import org.springframework.stereotype.Service;
 @Service
 public class JwtTokenService {
 
-    private final JwtEncoder jwtEncoder;
-    private final Clock clock;
-    private final String issuer;
-    private final Duration accessTokenTtl;
-
-    public JwtTokenService(
-            JwtEncoder jwtEncoder,
-            Clock clock,
-            @Value("${knowledge.security.jwt.issuer:knowledge-iam}") String issuer,
-            @Value("${knowledge.security.jwt.access-token-ttl:30m}") Duration accessTokenTtl) {
-        this.jwtEncoder = jwtEncoder;
-        this.clock = clock;
-        this.issuer = issuer;
-        this.accessTokenTtl = accessTokenTtl;
-    }
+    @Resource private JwtEncoder jwtEncoder;
+    @Resource private Clock clock;
+    @Value("${knowledge.security.jwt.issuer:knowledge-iam}") private String issuer;
+    @Value("${knowledge.security.jwt.access-token-ttl:30m}") private Duration accessTokenTtl;
 
     public AccessTokenBO issue(AuthenticatedUserBO user) {
         Instant issuedAt = clock.instant();
